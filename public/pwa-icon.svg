@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Homeschool Manager">
+  <rect width="512" height="512" rx="96" fill="#16211f"/>
+  <path fill="#e8f2f4" d="M132 132c0-18 14-32 32-32h184c18 0 32 14 32 32v248c0 18-14 32-32 32H164c-18 0-32-14-32-32V132Z"/>
+  <path fill="#3f6b57" d="M176 156h160v36H176zM176 224h160v28H176zM176 284h112v28H176z"/>
+  <circle cx="340" cy="342" r="34" fill="#b46f4d"/>
+  <path fill="#16211f" d="M332 326h16v40h-16zM320 338h40v16h-40z"/>
+</svg>

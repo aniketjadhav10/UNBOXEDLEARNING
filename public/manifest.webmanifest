@@ -1,0 +1,19 @@
+{
+  "name": "Homeschool Manager",
+  "short_name": "Homeschool",
+  "description": "Plan lessons, manage curriculum, and review AI-generated learning content.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#16211f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
