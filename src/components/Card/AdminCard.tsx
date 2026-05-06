@@ -1,6 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Button } from '../UI/Button';
+import { Button } from '../ui/Button';
 
 export function Card({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return (

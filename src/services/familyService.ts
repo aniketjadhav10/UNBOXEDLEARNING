@@ -35,7 +35,7 @@ export async function getMyProfile() {
     .single();
 
   if (error) throw error;
-  return data as ProfileWithFamily;
+  return data as unknown as ProfileWithFamily;
 }
 
 export async function createFamily(name: string) {

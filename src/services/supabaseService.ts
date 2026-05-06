@@ -40,7 +40,7 @@ async function withUserId(table: TableName, data: Record<string, unknown>) {
     throw new Error('Please sign in before creating records.');
   }
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     ...data,
     user_id: userData.user.id,
   };

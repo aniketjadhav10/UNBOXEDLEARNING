@@ -1,8 +1,8 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { Button } from '../UI/Button';
-import { InputField } from '../UI/InputField';
-import { SelectDropdown, type SelectOption } from '../UI/SelectDropdown';
+import { Button } from '../ui/Button';
+import { InputField } from '../ui/InputField';
+import { SelectDropdown, type SelectOption } from '../ui/SelectDropdown';
 
 export type FieldConfig = {
   name: string;

@@ -1,10 +1,10 @@
 import { CheckCircle2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader } from '../../../components/Card/AdminCard';
-import { Button } from '../../../components/UI/Button';
-import { EmptyState } from '../../../components/UI/EmptyState';
-import { Loader } from '../../../components/UI/Loader';
-import { Toast } from '../../../components/UI/Toast';
+import { Button }     from '../../../components/ui/Button';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Loader }     from '../../../components/ui/Loader';
+import { Toast }      from '../../../components/ui/Toast';
 import { getAll, update } from '../../../services/supabaseService';
 import { useAdminStore } from '../../../store/useAdminStore';
 

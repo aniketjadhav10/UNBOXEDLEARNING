@@ -1,9 +1,9 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Button } from '../../../components/UI/Button';
-import { EmptyState } from '../../../components/UI/EmptyState';
-import { InputField } from '../../../components/UI/InputField';
-import { Loader } from '../../../components/UI/Loader';
-import { Toast } from '../../../components/UI/Toast';
+import { Button }     from '../../../components/ui/Button';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { InputField } from '../../../components/ui/InputField';
+import { Loader }     from '../../../components/ui/Loader';
+import { Toast }      from '../../../components/ui/Toast';
 import {
   addParentToFamily,
   createFamily,

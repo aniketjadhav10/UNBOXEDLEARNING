@@ -9,9 +9,12 @@ export function ProfilePage() {
   const { user } = useAuth();
   const { subjects, topics } = useData();
 
-  const completed  = topics.filter((t) => t.completed).length;
+  const completed   = topics.filter((t) => t.completed).length;
   const favSubjects = [...subjects].sort((a, b) => b.progress - a.progress).slice(0, 3);
   const achievements = Math.floor(completed / 3);
+
+  // Guard: should not happen inside AuthGuard, but satisfies TypeScript
+  if (!user) return null;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">

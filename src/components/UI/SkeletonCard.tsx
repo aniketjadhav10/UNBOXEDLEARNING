@@ -1,7 +1,11 @@
 // Loading skeleton placeholder cards
-export function SkeletonCard() {
+interface SkeletonCardProps {
+  className?: string;
+}
+
+export function SkeletonCard({ className }: SkeletonCardProps = {}) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-card animate-pulse">
+    <div className={`bg-white rounded-2xl p-5 shadow-card animate-pulse ${className ?? ''}`}>
       {/* Icon placeholder */}
       <div className="w-12 h-12 bg-gray-200 rounded-xl mb-4" />
       {/* Title */}
@@ -19,9 +23,13 @@ export function SkeletonCard() {
   );
 }
 
-export function SkeletonRow() {
+interface SkeletonRowProps {
+  className?: string;
+}
+
+export function SkeletonRow({ className }: SkeletonRowProps = {}) {
   return (
-    <div className="bg-white rounded-xl p-4 shadow-card animate-pulse flex gap-4 items-start">
+    <div className={`bg-white rounded-xl p-4 shadow-card animate-pulse flex gap-4 items-start ${className ?? ''}`}>
       <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0" />
       <div className="flex-1 space-y-2">
         <div className="h-4 bg-gray-200 rounded-full w-2/3" />

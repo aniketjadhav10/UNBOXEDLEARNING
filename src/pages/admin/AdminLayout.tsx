@@ -1,6 +1,6 @@
 import { Activity, BookOpen, Bot, ClipboardList, Layers, ShieldCheck, UsersRound, UserRound } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
-import { Loader } from '../../components/UI/Loader';
+import { Loader } from '../../components/ui/Loader';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
 
 const navItems = [
