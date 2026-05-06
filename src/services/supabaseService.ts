@@ -40,8 +40,27 @@ async function withUserId(table: TableName, data: Record<string, unknown>) {
     throw new Error('Please sign in before creating records.');
   }
 
-  return {
+  const payload = {
     ...data,
     user_id: userData.user.id,
   };
+
+  if (table === 'children' && !payload.family_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('family_id')
+      .eq('id', userData.user.id)
+      .single();
+
+    if (!profile?.family_id) {
+      throw new Error('Create your family workspace before adding children.');
+    }
+
+    return {
+      ...payload,
+      family_id: profile.family_id,
+    };
+  }
+
+  return payload;
 }

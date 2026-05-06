@@ -1,9 +1,10 @@
-import { Activity, BookOpen, Bot, ClipboardList, Layers, ShieldCheck, UserRound } from 'lucide-react';
+import { Activity, BookOpen, Bot, ClipboardList, Layers, ShieldCheck, UsersRound, UserRound } from 'lucide-react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { Loader } from '../../components/UI/Loader';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
 
 const navItems = [
+  { href: '/admin/family', label: 'Family', icon: UsersRound },
   { href: '/admin/children', label: 'Children', icon: UserRound },
   { href: '/admin/subjects', label: 'Subjects', icon: BookOpen },
   { href: '/admin/topics', label: 'Topics', icon: Layers },
