@@ -101,7 +101,7 @@ export function TaskManagementPage() {
 
   async function handleCreateTask(data: any) {
     if (isAdmin && !resolvedChildId) {
-      addToast('Please select a child from the dashboard before adding a task.', 'error');
+      addToast('error', 'Please select a child from the dashboard before adding a task.');
       return;
     }
 
@@ -259,7 +259,7 @@ export function TaskManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.slice(0, visibleCount).map((task) => {
                 const topic = topics.find(t => t.id === task.topic_id);
-                const subjectName = subjects.find(s => s.id === topic?.subject_id)?.name;
+                const subjectName = subjects.find(s => s.id === topic?.subjectId)?.name;
                 
                 return (
                   <TaskCard

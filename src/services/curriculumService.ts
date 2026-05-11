@@ -4,7 +4,7 @@
 import { supabase } from './supabase';
 import type { DbSubject, DbTopic, DbTask, DbActivity } from '../types/database';
 
-export type CurriculumLevel = 'subjects' | 'topics' | 'tasks' | 'activities';
+export type CurriculumLevel = 'subjects' | 'topics' | 'tasks' | 'activities' | 'children';
 
 // ── Generic CRUD handlers ────────────────────────────────────
 

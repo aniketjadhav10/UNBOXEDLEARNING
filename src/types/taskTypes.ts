@@ -92,4 +92,6 @@ export interface UpdateProgressPayload {
   learned_count?: number;
   next_due_at?: string;
   notes?: string;
+  is_scheduled_this_week?: boolean;
 }
+
