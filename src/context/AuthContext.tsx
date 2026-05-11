@@ -58,6 +58,7 @@ interface AuthContextValue {
   isAdmin: boolean;
   authLoading: boolean; // true while resolving initial session
   signOut: () => Promise<void>;
+  updateProfile: (displayName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -115,6 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  const updateProfile = async (displayName: string) => {
+    if (!user) return;
+    try {
+      await supabase.from('profiles').update({ display_name: displayName }).eq('id', user.id);
+      setUser({ ...user, name: displayName, avatarInitials: getInitials(displayName) });
+    } catch (err) {
+      console.error('Failed to update profile', err);
+      throw err;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -123,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === 'admin',
         authLoading,
         signOut,
+        updateProfile,
       }}
     >
       {children}

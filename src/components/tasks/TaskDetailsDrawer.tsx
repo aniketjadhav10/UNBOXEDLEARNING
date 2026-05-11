@@ -1,0 +1,235 @@
+// ============================================================
+// TaskDetailsDrawer — Slide-in drawer with full task details
+// ============================================================
+import { X, BookOpen, Calendar, Clock, BarChart2, Repeat, Lightbulb, Save } from 'lucide-react';
+import { useState } from 'react';
+import type { InterestLevel, LearningStage, TaskWithProgress, UpdateProgressPayload } from '../../types/taskTypes';
+import { LearningStageBadge, LEARNING_STAGES } from './LearningStageBadge';
+import { InterestLevelIndicator } from './InterestLevelIndicator';
+import { TaskProgressRing } from './TaskProgressRing';
+
+interface TaskDetailsDrawerProps {
+  task: TaskWithProgress | null;
+  onClose: () => void;
+  onUpdateProgress: (payload: UpdateProgressPayload) => void;
+}
+
+function formatDate(iso?: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function formatRelative(iso?: string | null) {
+  if (!iso) return '—';
+  const diff = Math.round((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 0) return `In ${Math.abs(diff)} days`;
+  return `${diff} days ago`;
+}
+
+export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetailsDrawerProps) {
+  const [editNotes, setEditNotes] = useState('');
+  const [editStage, setEditStage] = useState<LearningStage | ''>('');
+  const [editInterest, setEditInterest] = useState<InterestLevel | 0>(0);
+  const [editLearnedCount, setEditLearnedCount] = useState<number | ''>('');
+  const [saving, setSaving] = useState(false);
+
+  if (!task) return null;
+
+  const { progress } = task;
+
+  function initEdit() {
+    setEditNotes(progress?.notes ?? '');
+    setEditStage(progress?.learning_stage ?? '');
+    setEditInterest((progress?.interest_level as InterestLevel) ?? 0);
+    setEditLearnedCount(progress?.learned_count ?? 0);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const payload: UpdateProgressPayload = {
+      task_id: task!.id,
+      ...(editNotes ? { notes: editNotes } : {}),
+      ...(editStage ? { learning_stage: editStage as LearningStage } : {}),
+      ...(editInterest ? { interest_level: editInterest as InterestLevel } : {}),
+      ...(editLearnedCount !== '' ? { learned_count: Number(editLearnedCount) } : {}),
+    };
+    await onUpdateProgress(payload);
+    setSaving(false);
+    onClose();
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Drawer panel */}
+      <aside
+        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl flex flex-col animate-slide-in overflow-hidden"
+        role="dialog"
+        aria-label="Task details"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-purple-50">
+          <div className="flex-1 min-w-0 pr-3">
+            <p className="text-xs font-semibold text-violet-500 uppercase tracking-widest mb-1">Task Details</p>
+            <h3 className="font-bold text-gray-900 text-base leading-snug">{task.name}</h3>
+            {task.description && (
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">{task.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <TaskProgressRing percent={task.progressPercent} size={52} />
+            <button
+              onClick={onClose}
+              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+              aria-label="Close drawer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+          {/* Stage & interest */}
+          <div className="flex flex-wrap gap-2">
+            <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} size="md" />
+            <InterestLevelIndicator level={progress?.interest_level ?? 3} size="md" />
+          </div>
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon: BarChart2,  label: 'Learned', value: `${progress?.learned_count ?? 0} / ${progress?.target_count ?? 10}` },
+              { icon: Repeat,     label: 'Repeat',  value: progress?.repeat_interval === 1 ? 'Daily' : progress?.repeat_interval === 7 ? 'Weekly' : progress?.repeat_interval ? `${progress.repeat_interval}d` : '—' },
+              { icon: Clock,      label: 'Last Practiced', value: formatRelative(progress?.last_practiced_at) },
+              { icon: Calendar,   label: 'Next Due', value: formatDate(progress?.next_due_at) },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon size={12} className="text-violet-400" />
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
+                </div>
+                <p className="text-sm font-bold text-gray-800">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Mastery prediction */}
+          {task.masteryPredictionDays !== undefined && task.masteryPredictionDays > 0 && (
+            <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 flex items-start gap-2">
+              <Lightbulb size={14} className="text-violet-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-violet-700">Mastery Prediction</p>
+                <p className="text-xs text-violet-600 mt-0.5">
+                  Estimated <span className="font-bold">{task.masteryPredictionDays} more sessions</span> to reach mastery at current pace.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Recommended action */}
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-start gap-2">
+            <span className="text-base flex-shrink-0">💡</span>
+            <div>
+              <p className="text-xs font-semibold text-amber-700">Recommended Action</p>
+              <p className="text-xs text-amber-600 mt-0.5">{task.recommendedAction}</p>
+            </div>
+          </div>
+
+          {/* Scheduled badge */}
+          {progress?.is_scheduled_this_week && (
+            <div className="flex items-center gap-2 text-xs text-violet-600 font-medium">
+              <Calendar size={13} />
+              Scheduled this week
+            </div>
+          )}
+
+          {/* ── Edit section ── */}
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Edit Progress</p>
+
+            {/* Stage select */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Learning Stage</label>
+              <select
+                value={editStage || progress?.learning_stage || ''}
+                onChange={(e) => setEditStage(e.target.value as LearningStage)}
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
+              >
+                <option value="">No change</option>
+                {LEARNING_STAGES.map((s) => (
+                  <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Interest */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Interest Level</label>
+              <InterestLevelIndicator
+                level={editInterest || progress?.interest_level || 3}
+                interactive
+                onSelect={(l) => setEditInterest(l)}
+                size="md"
+              />
+            </div>
+
+            {/* Learned count */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Learned Count</label>
+              <input
+                type="number"
+                min={0}
+                max={progress?.target_count ?? 10}
+                value={editLearnedCount === '' ? progress?.learned_count ?? '' : editLearnedCount}
+                onChange={(e) => setEditLearnedCount(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Notes</label>
+              <textarea
+                rows={3}
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Add session notes..."
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-xl transition-colors shadow-sm"
+          >
+            <Save size={14} />
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}

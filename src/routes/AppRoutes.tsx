@@ -8,17 +8,20 @@ import { MainLayout } from '../layouts/MainLayout';
 import { LoginPage } from '../pages/LoginPage';
 
 // Pages
-import { DashboardPage }  from '../pages/new/DashboardPage';
-import { KidsPage }       from '../pages/new/KidsPage';
+import { DashboardPage } from '../pages/new/DashboardPage';
+import { KidsPage } from '../pages/new/KidsPage';
 import { KidProfilePage } from '../pages/new/KidProfilePage';
-import { SubjectsPage }   from '../pages/new/SubjectsPage';
-import { TopicsPage }     from '../pages/new/TopicsPage';
+import { SubjectsPage } from '../pages/new/SubjectsPage';
+import { TopicsPage } from '../pages/new/TopicsPage';
 import { ActivitiesPage } from '../pages/new/ActivitiesPage';
-import { ReportsPage }    from '../pages/new/ReportsPage';
-import { SettingsPage }   from '../pages/new/SettingsPage';
+import { ReportsPage } from '../pages/new/ReportsPage';
+import { SettingsPage } from '../pages/new/SettingsPage';
 import { MyLearningPage } from '../pages/new/MyLearningPage';
-import { ProgressPage }   from '../pages/new/ProgressPage';
-import { ProfilePage }    from '../pages/new/ProfilePage';
+import { ProgressPage } from '../pages/new/ProgressPage';
+import { ProfilePage } from '../pages/new/ProfilePage';
+import { TaskManagementPage } from '../pages/new/TaskManagementPage';
+import { TasksListPage } from '../pages/new/TasksListPage';
+import { ActivitiesListPage } from '../pages/new/ActivitiesListPage';
 
 // ── Full-screen loading while resolving Supabase session ──────
 function SessionLoader() {
@@ -38,7 +41,7 @@ function SessionLoader() {
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, authLoading } = useAuth();
   if (authLoading) return <SessionLoader />;
-  if (!user)       return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -71,21 +74,24 @@ export function AppRoutes() {
       >
         {/* Shared */}
         <Route index element={<DashboardPage />} />
-        <Route path="subjects"                    element={<SubjectsPage />} />
-        <Route path="subjects/:subjectId/topics"  element={<TopicsPage />} />
+        <Route path="subjects" element={<SubjectsPage />} />
+        <Route path="subjects/:subjectId/topics" element={<TopicsPage />} />
+        <Route path="topics/:topicId/tasks" element={<TasksListPage />} />
+        <Route path="tasks/:taskId/activities" element={<ActivitiesListPage />} />
 
-        {/* Admin-only */}
-        <Route path="kids"         element={<AdminRoute><KidsPage /></AdminRoute>} />
-        <Route path="kids/:kidId"  element={<AdminRoute><KidProfilePage /></AdminRoute>} />
-        <Route path="topics"       element={<AdminRoute><TopicsPage /></AdminRoute>} />
-        <Route path="activities"   element={<AdminRoute><ActivitiesPage /></AdminRoute>} />
-        <Route path="reports"      element={<AdminRoute><ReportsPage /></AdminRoute>} />
-        <Route path="settings"     element={<AdminRoute><SettingsPage /></AdminRoute>} />
+        {/* Admin-only / Management */}
+        <Route path="kids" element={<AdminRoute><KidsPage /></AdminRoute>} />
+        <Route path="kids/:kidId" element={<AdminRoute><KidProfilePage /></AdminRoute>} />
+        <Route path="topics" element={<AdminRoute><TopicsPage /></AdminRoute>} />
+        <Route path="activities" element={<AdminRoute><ActivitiesPage /></AdminRoute>} />
+        {<Route path="tasks" element={<AdminRoute><TaskManagementPage /></AdminRoute>} />}
+        <Route path="reports" element={<AdminRoute><ReportsPage /></AdminRoute>} />
+        <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
 
         {/* Student-only */}
-        <Route path="my-learning"  element={<StudentRoute><MyLearningPage /></StudentRoute>} />
-        <Route path="progress"     element={<StudentRoute><ProgressPage /></StudentRoute>} />
-        <Route path="profile"      element={<StudentRoute><ProfilePage /></StudentRoute>} />
+        <Route path="my-learning" element={<StudentRoute><MyLearningPage /></StudentRoute>} />
+        <Route path="progress" element={<StudentRoute><ProgressPage /></StudentRoute>} />
+        <Route path="profile" element={<StudentRoute><ProfilePage /></StudentRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

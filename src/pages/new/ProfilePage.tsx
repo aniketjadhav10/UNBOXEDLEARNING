@@ -4,10 +4,34 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { Badge } from '../../components/ui/Badge';
 import { ProgressBar } from '../../components/ui/ProgressBar';
+import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { useToast } from '../../store/useToastStore';
+import { useState } from 'react';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { subjects, topics } = useData();
+  const toast = useToast();
+
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const PROFILE_FIELDS: FormField[] = [
+    { name: 'name', label: 'Display Name', type: 'text', placeholder: 'e.g. Jane Doe', required: true }
+  ];
+
+  async function handleUpdateProfile(data: any) {
+    setSubmitting(true);
+    try {
+      await updateProfile(data.name);
+      toast.success('Profile updated successfully');
+      setProfileModalOpen(false);
+    } catch (err) {
+      toast.error('Failed to update profile');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const completed   = topics.filter((t) => t.completed).length;
   const favSubjects = [...subjects].sort((a, b) => b.progress - a.progress).slice(0, 3);
@@ -31,7 +55,7 @@ export function ProfilePage() {
             <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${user.avatarColor} flex items-center justify-center text-white text-xl font-bold shadow-lg ring-4 ring-white`}>
               {user.avatarInitials}
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-violet-50 text-violet-700 text-sm font-semibold rounded-xl hover:bg-violet-100 transition-colors">
+            <button onClick={() => setProfileModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-violet-50 text-violet-700 text-sm font-semibold rounded-xl hover:bg-violet-100 transition-colors">
               <Edit3 size={14} /> Edit
             </button>
           </div>
@@ -105,6 +129,16 @@ export function ProfilePage() {
           </div>
         )}
       </div>
+
+      <CurriculumFormModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        title="Edit Profile"
+        fields={PROFILE_FIELDS}
+        initialData={{ name: user.name }}
+        onSubmit={handleUpdateProfile}
+        loading={submitting}
+      />
     </div>
   );
 }

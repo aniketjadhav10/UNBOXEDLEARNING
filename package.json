@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "framer-motion": "^12.38.0",
     "idb": "^8.0.2",
     "lucide-react": "^0.468.0",
     "openai": "^4.76.0",
@@ -22,11 +23,11 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@vercel/node": "^3.2.20",
     "@eslint/js": "^9.16.0",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
+    "@vercel/node": "^3.2.20",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-plugin-react-hooks": "^5.1.0",

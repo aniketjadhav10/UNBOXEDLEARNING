@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  BrainCircuit,
   ChevronLeft,
   GraduationCap,
   Home,
@@ -23,13 +24,14 @@ interface NavItem {
 }
 
 const ADMIN_NAV: NavItem[] = [
-  { label: 'Dashboard',  path: '/',           icon: Home       },
-  { label: 'Kids',       path: '/kids',        icon: Users      },
-  { label: 'Subjects',   path: '/subjects',    icon: BookOpen   },
-  { label: 'Topics',     path: '/topics',      icon: ListChecks },
-  { label: 'Activities', path: '/activities',  icon: Zap        },
-  { label: 'Reports',    path: '/reports',     icon: BarChart3  },
-  { label: 'Settings',   path: '/settings',    icon: Settings   },
+  { label: 'Dashboard',  path: '/',           icon: Home         },
+  { label: 'Kids',       path: '/kids',        icon: Users        },
+  { label: 'Subjects',   path: '/subjects',    icon: BookOpen     },
+  { label: 'Topics',     path: '/topics',      icon: ListChecks   },
+  { label: 'Activities', path: '/activities',  icon: Zap          },
+  { label: 'Tasks',      path: '/tasks',       icon: BrainCircuit },
+  { label: 'Reports',    path: '/reports',     icon: BarChart3    },
+  { label: 'Settings',   path: '/settings',    icon: Settings     },
 ];
 
 const STUDENT_NAV: NavItem[] = [

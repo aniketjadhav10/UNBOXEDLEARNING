@@ -7,6 +7,9 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Badge } from '../../components/ui/Badge';
 import { TopicCard } from '../../components/TopicCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
+import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { updateItem } from '../../services/curriculumService';
+import { useToast } from '../../store/useToastStore';
 
 type Tab = 'overview' | 'subjects' | 'topics' | 'achievements';
 const TABS: { id: Tab; label: string }[] = [
@@ -24,16 +27,41 @@ const ACHIEVEMENT_LIST = [
   { emoji: '📚', title: 'Bookworm',       desc: 'Read 10+ materials.' },
 ];
 
+const KID_FIELDS: FormField[] = [
+  { name: 'name', label: 'Child Name', type: 'text', required: true, placeholder: 'e.g. Leo' },
+  { name: 'grade_level', label: 'Grade Level', type: 'text', required: true, placeholder: 'e.g. 4th Grade' },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'YYYY-MM-DD' }
+];
+
 export function KidProfilePage() {
   const { kidId } = useParams<{ kidId: string }>();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('overview');
-  const { kids, subjects, topics, loading } = useData();
+  const { kids, subjects, topics, loading, refresh } = useData();
+  const toast = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const kid = kids.find((k) => k.id === kidId);
   const kidSubjects = subjects.filter((s) => s.childId === kidId);
   const kidTopics   = topics.filter((t) => kidSubjects.some((s) => s.id === t.subjectId));
   const completedTopics = kidTopics.filter((t) => t.completed);
+
+  async function handleUpdateKid(data: any) {
+    if (!kid) return;
+    setSubmitting(true);
+    try {
+      await updateItem('children', kid.id, data);
+      await refresh();
+      toast.success('Child profile updated!');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update child profile');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (loading) return (
     <div className="space-y-4 animate-fade-in">
@@ -67,7 +95,11 @@ export function KidProfilePage() {
             <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${kid.avatarColor} flex items-center justify-center text-white text-xl font-bold shadow-lg ring-4 ring-white`}>
               {kid.avatarInitials}
             </div>
-            <button id="edit-profile-btn" className="flex items-center gap-2 px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm font-semibold rounded-xl transition-colors">
+            <button 
+              id="edit-profile-btn" 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm font-semibold rounded-xl transition-colors"
+            >
               <Edit3 size={14} /> Edit
             </button>
           </div>
@@ -169,6 +201,20 @@ export function KidProfilePage() {
           )}
         </div>
       </div>
+      
+      <CurriculumFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Edit Profile"
+        fields={KID_FIELDS}
+        initialData={{
+          name: kid.name,
+          grade_level: kid.grade,
+          date_of_birth: kid.date_of_birth // Note: might need to be added to Kid in DataContext
+        }}
+        onSubmit={handleUpdateKid}
+        loading={submitting}
+      />
     </div>
   );
 }

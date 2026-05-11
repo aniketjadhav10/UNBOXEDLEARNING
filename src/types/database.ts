@@ -1,5 +1,5 @@
 // ============================================================
-// Database types — match Supabase schema exactly
+// database.ts — Complete DB types with all missing fields
 // ============================================================
 
 export type LearningStage =
@@ -34,7 +34,7 @@ export interface DbSubject {
   child_id: string;
   name: string;
   description: string | null;
-  color: string;          // hex color, e.g. "#3f6b57"
+  color: string;
   order_index: number;
   is_active: boolean;
   created_at: string;
@@ -73,7 +73,7 @@ export interface DbTaskProgress {
   child_id: string;
   task_id: string;
   learning_stage: LearningStage;
-  interest_level: string | null;
+  interest_level: number | null;
   learned_count: number;
   target_count: number;
   last_practiced_at: string | null;
@@ -90,6 +90,8 @@ export interface DbActivity {
   task_id: string;
   name: string;
   type: string | null;
+  materials: string | null;   // Added — used in ActivitiesListPage
+  duration_minutes: number | null;
   order_index: number;
   is_active: boolean;
   created_at: string;

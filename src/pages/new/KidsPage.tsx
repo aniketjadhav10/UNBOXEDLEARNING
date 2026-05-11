@@ -3,10 +3,43 @@ import { Plus, RefreshCw, Users } from 'lucide-react';
 import { KidCard } from '../../components/KidCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
+import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { createItem } from '../../services/curriculumService';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
+import { useState } from 'react';
+import { useToast } from '../../store/useToastStore';
+
+const KID_FIELDS: FormField[] = [
+  { name: 'name', label: 'Child Name', type: 'text', required: true, placeholder: 'e.g. Leo' },
+  { name: 'grade_level', label: 'Grade Level', type: 'text', required: true, placeholder: 'e.g. 4th Grade' },
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'YYYY-MM-DD' }
+];
 
 export function KidsPage() {
   const { kids, loading, error, isEmpty, refresh } = useData();
+  const { user } = useAuth();
+  const toast = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleAddKid(data: any) {
+    setSubmitting(true);
+    try {
+      await createItem('children', {
+        ...data,
+        user_id: user?.id,
+      });
+      await refresh();
+      toast.success('Kid added successfully!');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to add child');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (loading) return (
     <div className="space-y-6 animate-fade-in">
@@ -41,7 +74,7 @@ export function KidsPage() {
           <button onClick={refresh} className="p-2.5 bg-white border border-gray-200 text-gray-400 hover:text-violet-600 rounded-xl transition-colors" title="Refresh">
             <RefreshCw size={15} />
           </button>
-          <button id="add-kid-btn" className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
+          <button onClick={() => setIsModalOpen(true)} id="add-kid-btn" className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
             <Plus size={16} /> Add Kid
           </button>
         </div>
@@ -70,12 +103,22 @@ export function KidsPage() {
           title="No kids added yet"
           description="Add your first child to start managing their homeschool curriculum and tracking progress."
           actionLabel="Add Kid"
+          onAction={() => setIsModalOpen(true)}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {kids.map((kid) => <KidCard key={kid.id} kid={kid} />)}
         </div>
       )}
+
+      <CurriculumFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Add New Kid"
+        fields={KID_FIELDS}
+        onSubmit={handleAddKid}
+        loading={submitting}
+      />
     </div>
   );
 }

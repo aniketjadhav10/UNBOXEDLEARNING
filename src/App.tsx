@@ -1,16 +1,22 @@
 // ============================================================
-// App.tsx — Root: AuthProvider → DataProvider → AppRoutes
+// App.tsx — Root: ErrorBoundary → AuthProvider → DataProvider → AppRoutes + GlobalToast
 // ============================================================
-import { AuthProvider } from './context/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { GlobalToast }   from './components/ui/GlobalToast';
+import { AuthProvider }  from './context/AuthContext';
 import { DataProvider }  from './context/DataContext';
 import { AppRoutes }     from './routes/AppRoutes';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <AppRoutes />
-      </DataProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DataProvider>
+          <AppRoutes />
+          {/* Global toast renderer — reads from useToastStore */}
+          <GlobalToast />
+        </DataProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   'subjects':    'Subjects',
   'topics':      'All Topics',
   'activities':  'Activities',
+  'tasks':       'Learning Tasks',
   'reports':     'Reports',
   'settings':    'Settings',
   'my-learning': 'My Learning',
