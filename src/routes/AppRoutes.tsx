@@ -86,6 +86,7 @@ export function AppRoutes() {
         <Route path="activities" element={<AdminRoute><ActivitiesPage /></AdminRoute>} />
         {<Route path="tasks" element={<AdminRoute><TaskManagementPage /></AdminRoute>} />}
         {<Route path="scheduled" element={<AdminRoute><TaskManagementPage defaultTab="scheduled" /></AdminRoute>} />}
+        {<Route path="archived" element={<AdminRoute><TaskManagementPage defaultTab="archived" /></AdminRoute>} />}
         <Route path="reports" element={<AdminRoute><ReportsPage /></AdminRoute>} />
         <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
 

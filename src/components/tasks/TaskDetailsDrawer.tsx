@@ -73,9 +73,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
       ...(editNotes ? { notes: editNotes } : {}),
       ...(editStage ? { learning_stage: editStage as LearningStage } : {}),
       ...(editInterest ? { interest_level: editInterest as InterestLevel } : {}),
-      ...(editLearnedCount !== '' ? { learned_count: Number(editLearnedCount) } : {}),
-      ...(editTargetCount !== '' ? { target_count: Number(editTargetCount) } : {}),
-      ...(editRepeatInterval !== '' ? { repeat_interval: Number(editRepeatInterval) } : {}),
+      learned_count: Number(editLearnedCount),
+      target_count: Number(editTargetCount),
+      repeat_interval: Number(editRepeatInterval),
     };
     await onUpdateProgress(payload);
     setSaving(false);

@@ -16,6 +16,7 @@ interface TaskCardProps {
   onUpdateStage: (task: TaskWithProgress, stage: LearningStage) => void;
   onUpdateInterest: (task: TaskWithProgress, level: InterestLevel) => void;
   onArchive: (taskId: string) => void;
+  onUnarchive?: (taskId: string) => void;
   onOpenDetails: (task: TaskWithProgress) => void;
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
@@ -46,6 +47,7 @@ export function TaskCard({
   onUpdateStage,
   onUpdateInterest,
   onArchive,
+  onUnarchive,
   onOpenDetails,
   onToggleSchedule,
   subjectName,
@@ -177,6 +179,7 @@ export function TaskCard({
           onMarkPracticed={onMarkPracticed}
           onUpdateStage={onUpdateStage}
           onArchive={onArchive}
+          onUnarchive={onUnarchive}
           onToggleSchedule={onToggleSchedule}
           onExpandDetails={() => onOpenDetails(task)}
         />

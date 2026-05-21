@@ -11,6 +11,7 @@ interface TaskQuickActionsProps {
   onMarkPracticed: (task: TaskWithProgress) => void;
   onUpdateStage: (task: TaskWithProgress, stage: LearningStage) => void;
   onArchive: (taskId: string) => void;
+  onUnarchive?: (taskId: string) => void;
   onToggleSchedule?: (task: TaskWithProgress) => void;
   onExpandDetails: () => void;
 }
@@ -20,10 +21,12 @@ export function TaskQuickActions({
   onMarkPracticed,
   onUpdateStage,
   onArchive,
+  onUnarchive,
   onToggleSchedule,
   onExpandDetails,
 }: TaskQuickActionsProps) {
   const [stageMenuOpen, setStageMenuOpen] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const isNotStarted = task.progress?.learning_stage === 'Not_Started';
   const isConfident = task.progress?.learning_stage === 'Confident';
   const isFullyMastered = isConfident && (task.progress?.learned_count ?? 0) >= (task.progress?.target_count ?? 5);
@@ -102,18 +105,24 @@ export function TaskQuickActions({
         {isFullyMastered && <span>{task.progress?.is_scheduled_this_week ? "Scheduled this week" : "Learn this week"}</span>}
       </button>
 
-      {/* Archive */}
-      <button
-        onClick={() => {
-          if (window.confirm("Are you sure you want to archive this task?")) {
-            onArchive(task.id);
-          }
-        }}
-        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-        title="Archive task"
-      >
-        <Archive size={13} />
-      </button>
+      {/* Archive / Unarchive */}
+      {task.is_active === false ? (
+        <button
+          onClick={() => onUnarchive?.(task.id)}
+          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+          title="Restore task"
+        >
+          <RotateCcw size={13} />
+        </button>
+      ) : (
+        <button
+          onClick={() => setArchiveModalOpen(true)}
+          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          title="Archive task"
+        >
+          <Archive size={13} />
+        </button>
+      )}
 
       {/* Expand details */}
       <button
@@ -123,6 +132,35 @@ export function TaskQuickActions({
         Details
         <ChevronDown size={12} />
       </button>
+
+      {/* Archive Confirmation Modal */}
+      {archiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Archive Task?</h3>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              Are you sure you want to archive <strong>{task.name}</strong>? You can restore it later if needed.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setArchiveModalOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onArchive(task.id);
+                  setArchiveModalOpen(false);
+                }}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-sm"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

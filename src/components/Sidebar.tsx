@@ -1,4 +1,5 @@
 import {
+  Archive,
   BarChart3,
   BookOpen,
   BrainCircuit,
@@ -34,6 +35,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Activities', path: '/activities',  icon: Zap          },
   { label: 'Tasks',      path: '/tasks',       icon: BrainCircuit },
   { label: 'Scheduled',  path: '/scheduled',   icon: CalendarClock},
+  { label: 'Archived',   path: '/archived',    icon: Archive      },
   { label: 'Reports',    path: '/reports',     icon: BarChart3    },
   { label: 'Settings',   path: '/settings',    icon: Settings     },
 ];

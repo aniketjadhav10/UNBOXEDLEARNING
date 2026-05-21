@@ -42,7 +42,7 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_FILTER);
   const [sortKey, setSortKey] = useState<TaskSortKey>('next_due_at');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'overdue' | 'mastered' | 'scheduled'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'overdue' | 'mastered' | 'scheduled' | 'archived'>(defaultTab);
 
   useEffect(() => {
     setActiveTab(defaultTab);
@@ -58,9 +58,11 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTasksWithProgress(childId);
+      // Fetch all tasks including archived so client can filter
+      const data = await fetchTasksWithProgress(childId, 'all');
       setTasks(data);
-      setSummary(computeDashboardSummary(data));
+      // Only include active tasks in summary stats
+      setSummary(computeDashboardSummary(data.filter(t => t.is_active !== false)));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -239,28 +241,48 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
 
   const handleArchive = useCallback(async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    patchTask(taskId, (t) => ({ ...t, is_active: false }));
 
     try {
       await archiveTask(taskId);
       addToast('info', `"${task?.name}" archived`);
     } catch {
-      if (task) setTasks((prev) => [...prev, task]);
+      patchTask(taskId, () => task!);
       addToast('error', 'Archive failed.');
     }
-  }, [tasks, addToast]);
+  }, [tasks, patchTask, addToast]);
+
+  const handleUnarchive = useCallback(async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    patchTask(taskId, (t) => ({ ...t, is_active: true }));
+
+    try {
+      await unarchiveTask(taskId);
+      addToast('success', `"${task?.name}" restored`);
+    } catch {
+      patchTask(taskId, () => task!);
+      addToast('error', 'Restore failed.');
+    }
+  }, [tasks, patchTask, addToast]);
 
   // ── Filtered + sorted tasks ──────────────────────────────────
   const filtered = useMemo(() => {
     let result = [...tasks];
 
-    // Tab filter — use actual DB stage names
-    if (activeTab === 'today')    result = result.filter((t) => t.isDueToday);
-    else if (activeTab === 'overdue')  result = result.filter((t) => t.isOverdue);
-    else if (activeTab === 'mastered') result = result.filter((t) =>
-      ['Confident', 'Comfortable'].includes(t.progress?.learning_stage ?? '')
-    );
-    else if (activeTab === 'scheduled') result = result.filter((t) => t.progress?.is_scheduled_this_week);
+    // Filter by active vs archived
+    if (activeTab === 'archived') {
+      result = result.filter((t) => t.is_active === false);
+    } else {
+      result = result.filter((t) => t.is_active !== false); // active only
+
+      // Tab filter — use actual DB stage names
+      if (activeTab === 'today')    result = result.filter((t) => t.isDueToday);
+      else if (activeTab === 'overdue')  result = result.filter((t) => t.isOverdue);
+      else if (activeTab === 'mastered') result = result.filter((t) =>
+        ['Confident', 'Comfortable'].includes(t.progress?.learning_stage ?? '')
+      );
+      else if (activeTab === 'scheduled') result = result.filter((t) => t.progress?.is_scheduled_this_week);
+    }
 
     // Advanced filters
     if (filter.subject) result = result.filter((t) => t.topic_id === filter.subject); // Note: filter by topic_id since subject_id isn't on task table
@@ -330,9 +352,10 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
     handleMarkPracticed,
     handleUpdateStage,
     handleUpdateInterest,
-    handleToggleSchedule,
     handleUpdateProgress,
     handleArchive,
+    handleUnarchive,
+    handleToggleSchedule,
     addToast,
   };
 }

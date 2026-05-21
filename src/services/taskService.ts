@@ -80,8 +80,8 @@ function buildTaskWithProgress(
   };
 }
 
-// ── Fetch all tasks for a child ───────────────────────────────
-export async function fetchTasksWithProgress(childId: string): Promise<TaskWithProgress[]> {
+// ── Fetch tasks for a child ───────────────────────────────
+export async function fetchTasksWithProgress(childId: string, status: 'active' | 'archived' | 'all' = 'active'): Promise<TaskWithProgress[]> {
   // 1. Fetch all progress for this child
   const { data: progressData, error: progErr } = await supabase
     .from('task_progress')
@@ -95,11 +95,15 @@ export async function fetchTasksWithProgress(childId: string): Promise<TaskWithP
   const taskIds = progressData.map((p) => p.task_id);
 
   // 2. Fetch the corresponding tasks
-  const { data: tasks, error: taskErr } = await supabase
+  let query = supabase
     .from('tasks')
     .select('*')
-    .in('id', taskIds)
-    .eq('is_active', true);
+    .in('id', taskIds);
+
+  if (status === 'active') query = query.eq('is_active', true);
+  else if (status === 'archived') query = query.eq('is_active', false);
+
+  const { data: tasks, error: taskErr } = await query;
 
   if (taskErr) throw new Error(taskErr.message);
 
@@ -175,6 +179,15 @@ export async function archiveTask(taskId: string): Promise<void> {
   const { error } = await supabase
     .from('tasks')
     .update({ is_active: false })
+    .eq('id', taskId);
+  if (error) throw new Error(error.message);
+}
+
+// ── Unarchive task ───────────────────────────────────────────
+export async function unarchiveTask(taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('tasks')
+    .update({ is_active: true })
     .eq('id', taskId);
   if (error) throw new Error(error.message);
 }

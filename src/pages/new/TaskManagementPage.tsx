@@ -32,6 +32,7 @@ const TABS = [
   { key: 'overdue',  label: '⚠ Overdue'  },
   { key: 'mastered', label: '⭐ Mastered' },
   { key: 'scheduled', label: '📌 Scheduled' },
+  { key: 'archived',  label: '📦 Archived'  },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -44,6 +45,7 @@ function EmptyTaskState({ tab }: { tab: TabKey }) {
     overdue:  { icon: '✅', title: 'No overdue tasks',       desc: 'Great job keeping up with the schedule!' },
     mastered: { icon: '🌟', title: 'No mastered tasks yet',  desc: 'Keep practicing to reach mastery levels.' },
     scheduled:{ icon: '📌', title: 'No scheduled tasks',     desc: 'Click "Learn this week" on a task to prioritize it.' },
+    archived: { icon: '📦', title: 'No archived tasks',      desc: 'Tasks you archive will appear here.' },
   };
   const { icon, title, desc } = messages[tab];
   return (
@@ -73,7 +75,7 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
     toasts, addToast, load,
     handleMarkPracticed, handleUpdateStage,
     handleUpdateInterest, handleUpdateProgress, handleArchive,
-    handleToggleSchedule,
+    handleUnarchive, handleToggleSchedule,
   } = useTaskManagement(childId, defaultTab);
 
   const [drawerTask, setDrawerTask] = useState<TaskWithProgress | null>(null);
@@ -272,6 +274,7 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
                     onUpdateInterest={handleUpdateInterest}
                     onToggleSchedule={handleToggleSchedule}
                     onArchive={handleArchive}
+                    onUnarchive={handleUnarchive}
                     onOpenDetails={(t) => setDrawerTask(t)}
                     subjectName={subjectName}
                   />
