@@ -8,6 +8,7 @@ import {
   updateTaskProgress,
   markPracticedToday,
   archiveTask,
+  unarchiveTask,
 } from '../services/taskService';
 import type {
   TaskWithProgress,
@@ -31,7 +32,7 @@ const EMPTY_FILTER: TaskFilter = {
   interestLevel: 0,
 };
 
-export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' | 'overdue' | 'mastered' | 'scheduled' = 'all') {
+export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' | 'overdue' | 'mastered' | 'scheduled' | 'archived' = 'all') {
   // ── Data state ──────────────────────────────────────────────
   const [tasks, setTasks] = useState<TaskWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
