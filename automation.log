@@ -1,0 +1,18 @@
+2026-05-12 01:37:32,534 [WARNING] automation: GEMINI_API_KEY environment variable is not set correctly. Please check your .env file.
+2026-05-12 01:37:32,535 [WARNING] automation: SUPABASE_URL or SUPABASE_KEY is missing. Supabase integration will not work.
+2026-05-12 01:37:33,385 [INFO] automation: Running job immediately (--run-now flag provided).
+2026-05-12 01:37:33,386 [INFO] automation: Starting hierarchical generation process...
+2026-05-12 01:37:33,387 [ERROR] automation: Supabase must be configured to fetch subjects for the pipeline. Aborting.
+2026-05-12 01:37:33,387 [INFO] automation: Immediate execution completed.
+2026-05-12 01:38:36,066 [WARNING] automation: GEMINI_API_KEY environment variable is not set correctly. Please check your .env file.
+2026-05-12 01:38:36,067 [WARNING] automation: SUPABASE_URL or SUPABASE_KEY is missing. Supabase integration will not work.
+2026-05-12 01:38:36,443 [INFO] automation: Running job immediately (--run-now flag provided).
+2026-05-12 01:38:36,444 [INFO] automation: Starting hierarchical generation process...
+2026-05-12 01:38:36,444 [ERROR] automation: Supabase must be configured to fetch subjects for the pipeline. Aborting.
+2026-05-12 01:38:36,444 [INFO] automation: Immediate execution completed.
+2026-05-12 01:39:50,617 [WARNING] automation: GEMINI_API_KEY environment variable is not set correctly. Please check your .env file.
+2026-05-12 01:39:50,618 [WARNING] automation: SUPABASE_URL or SUPABASE_KEY is missing. Supabase integration will not work.
+2026-05-12 01:39:51,017 [INFO] automation: Running job immediately (--run-now flag provided).
+2026-05-12 01:39:51,017 [INFO] automation: Starting hierarchical generation process...
+2026-05-12 01:39:51,017 [ERROR] automation: Supabase must be configured to fetch subjects for the pipeline. Aborting.
+2026-05-12 01:39:51,018 [INFO] automation: Immediate execution completed.

@@ -2,7 +2,7 @@
 // TaskDetailsDrawer — Slide-in drawer with full task details
 // ============================================================
 import { X, BookOpen, Calendar, Clock, BarChart2, Repeat, Lightbulb, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress, UpdateProgressPayload } from '../../types/taskTypes';
 import { LearningStageBadge, LEARNING_STAGES } from './LearningStageBadge';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
@@ -35,20 +35,38 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
   const [editStage, setEditStage] = useState<LearningStage | ''>('');
   const [editInterest, setEditInterest] = useState<InterestLevel | 0>(0);
   const [editLearnedCount, setEditLearnedCount] = useState<number | ''>('');
+  const [editTargetCount, setEditTargetCount] = useState<number | ''>('');
+  const [editRepeatInterval, setEditRepeatInterval] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (task) {
+      setEditNotes(task.progress?.notes ?? '');
+      setEditStage(task.progress?.learning_stage ?? '');
+      setEditInterest((task.progress?.interest_level as InterestLevel) ?? 0);
+      setEditLearnedCount(task.progress?.learned_count ?? 0);
+      setEditTargetCount(task.progress?.target_count ?? 5);
+      setEditRepeatInterval(task.progress?.repeat_interval ?? 1);
+      setErrorMsg('');
+    }
+  }, [task?.id]);
 
   if (!task) return null;
 
   const { progress } = task;
 
-  function initEdit() {
-    setEditNotes(progress?.notes ?? '');
-    setEditStage(progress?.learning_stage ?? '');
-    setEditInterest((progress?.interest_level as InterestLevel) ?? 0);
-    setEditLearnedCount(progress?.learned_count ?? 0);
-  }
-
   async function handleSave() {
+    if (
+      editTargetCount === '' || editTargetCount <= 0 ||
+      editRepeatInterval === '' || editRepeatInterval <= 0 ||
+      editLearnedCount === '' || editLearnedCount < 0
+    ) {
+      setErrorMsg('Please enter valid numbers (Target and Repeat must be positive).');
+      return;
+    }
+    setErrorMsg('');
+
     setSaving(true);
     const payload: UpdateProgressPayload = {
       task_id: task!.id,
@@ -56,6 +74,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
       ...(editStage ? { learning_stage: editStage as LearningStage } : {}),
       ...(editInterest ? { interest_level: editInterest as InterestLevel } : {}),
       ...(editLearnedCount !== '' ? { learned_count: Number(editLearnedCount) } : {}),
+      ...(editTargetCount !== '' ? { target_count: Number(editTargetCount) } : {}),
+      ...(editRepeatInterval !== '' ? { repeat_interval: Number(editRepeatInterval) } : {}),
     };
     await onUpdateProgress(payload);
     setSaving(false);
@@ -109,20 +129,67 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
 
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: BarChart2,  label: 'Learned', value: `${progress?.learned_count ?? 0} / ${progress?.target_count ?? 10}` },
-              { icon: Repeat,     label: 'Repeat',  value: progress?.repeat_interval === 1 ? 'Daily' : progress?.repeat_interval === 7 ? 'Weekly' : progress?.repeat_interval ? `${progress.repeat_interval}d` : '—' },
-              { icon: Clock,      label: 'Last Practiced', value: formatRelative(progress?.last_practiced_at) },
-              { icon: Calendar,   label: 'Next Due', value: formatDate(progress?.next_due_at) },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Icon size={12} className="text-violet-400" />
-                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
-                </div>
-                <p className="text-sm font-bold text-gray-800">{value}</p>
+            
+            {/* Learned & Target */}
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <BarChart2 size={12} className="text-violet-400" />
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Learned / Target</span>
               </div>
-            ))}
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={editTargetCount === '' ? 10 : editTargetCount}
+                  value={editLearnedCount}
+                  onChange={(e) => setEditLearnedCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-12 px-1 py-1 text-sm font-bold text-center bg-white border border-gray-200 rounded-md outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100"
+                />
+                <span className="text-gray-400 font-bold">/</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={editTargetCount}
+                  onChange={(e) => setEditTargetCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-12 px-1 py-1 text-sm font-bold text-center bg-white border border-gray-200 rounded-md outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100"
+                />
+              </div>
+            </div>
+
+            {/* Repeat Interval */}
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Repeat size={12} className="text-violet-400" />
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Repeat (Days)</span>
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={15}
+                value={editRepeatInterval}
+                onChange={(e) => setEditRepeatInterval(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full px-2 py-1 text-sm font-bold bg-white border border-gray-200 rounded-md outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100"
+              />
+            </div>
+
+            {/* Last Practiced */}
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock size={12} className="text-violet-400" />
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Last Practiced</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800">{formatRelative(progress?.last_practiced_at)}</p>
+            </div>
+
+            {/* Next Due */}
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar size={12} className="text-violet-400" />
+                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Next Due</span>
+              </div>
+              <p className="text-sm font-bold text-gray-800">{formatDate(progress?.next_due_at)}</p>
+            </div>
+            
           </div>
 
           {/* Mastery prediction */}
@@ -168,7 +235,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
                 className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 transition-all"
               >
                 <option value="">No change</option>
-                {LEARNING_STAGES.map((s) => (
+                {LEARNING_STAGES.filter(s => 
+                  progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true
+                ).map((s) => (
                   <option key={s} value={s}>{s.replace('_', ' ')}</option>
                 ))}
               </select>
@@ -182,19 +251,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
                 interactive
                 onSelect={(l) => setEditInterest(l)}
                 size="md"
-              />
-            </div>
-
-            {/* Learned count */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Learned Count</label>
-              <input
-                type="number"
-                min={0}
-                max={progress?.target_count ?? 10}
-                value={editLearnedCount === '' ? progress?.learned_count ?? '' : editLearnedCount}
-                onChange={(e) => setEditLearnedCount(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
               />
             </div>
 
@@ -213,21 +269,28 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-xl transition-colors shadow-sm"
-          >
-            <Save size={14} />
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
+        <div className="p-4 border-t border-gray-100 flex flex-col gap-3">
+          {errorMsg && (
+            <p className="text-xs font-semibold text-red-500 bg-red-50 p-2 rounded-lg text-center">
+              {errorMsg}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-xl transition-colors shadow-sm"
+            >
+              <Save size={14} />
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
         </div>
       </aside>
     </>

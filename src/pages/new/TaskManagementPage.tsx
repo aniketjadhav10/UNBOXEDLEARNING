@@ -31,6 +31,7 @@ const TABS = [
   { key: 'today',    label: '📅 Today'    },
   { key: 'overdue',  label: '⚠ Overdue'  },
   { key: 'mastered', label: '⭐ Mastered' },
+  { key: 'scheduled', label: '📌 Scheduled' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -42,6 +43,7 @@ function EmptyTaskState({ tab }: { tab: TabKey }) {
     today:    { icon: '🎉', title: 'All caught up!',         desc: 'No tasks are due today. Enjoy the day!' },
     overdue:  { icon: '✅', title: 'No overdue tasks',       desc: 'Great job keeping up with the schedule!' },
     mastered: { icon: '🌟', title: 'No mastered tasks yet',  desc: 'Keep practicing to reach mastery levels.' },
+    scheduled:{ icon: '📌', title: 'No scheduled tasks',     desc: 'Click "Learn this week" on a task to prioritize it.' },
   };
   const { icon, title, desc } = messages[tab];
   return (
@@ -54,7 +56,7 @@ function EmptyTaskState({ tab }: { tab: TabKey }) {
 }
 
 // ── Main page ────────────────────────────────────────────────
-export function TaskManagementPage() {
+export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey }) {
   const { user, isAdmin } = useAuth();
   const { selectedChildId } = useSettingsStore();
   const { subjects, topics, kids } = useData(); // Get subjects and topics for the form
@@ -72,7 +74,7 @@ export function TaskManagementPage() {
     handleMarkPracticed, handleUpdateStage,
     handleUpdateInterest, handleUpdateProgress, handleArchive,
     handleToggleSchedule,
-  } = useTaskManagement(childId);
+  } = useTaskManagement(childId, defaultTab);
 
   const [drawerTask, setDrawerTask] = useState<TaskWithProgress | null>(null);
   const [visibleCount, setVisibleCount] = useState(50);

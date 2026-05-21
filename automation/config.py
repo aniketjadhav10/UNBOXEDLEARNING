@@ -6,8 +6,9 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (look in the same directory as this script)
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=env_path)
 
 # Configuration variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

@@ -107,55 +107,13 @@ export function DashboardPage() {
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ── Hero Banner ─────────────────────────────────────── */}
-      <div className="relative bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95] rounded-3xl p-6 lg:p-8 overflow-hidden">
-        <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full" />
-        <div className="absolute -bottom-10 -left-6 w-32 h-32 bg-white/5 rounded-full" />
-        <div className="absolute top-4 right-20 w-16 h-16 bg-violet-400/20 rounded-full" />
-        <div className="relative z-10">
-          <p className="text-violet-300 text-sm font-medium mb-1">
-            {greeting()}, {user?.name?.split(' ')[0] ?? 'there'} 👋
-          </p>
-          <h2 className="text-white text-2xl lg:text-3xl font-bold mb-2">
-            {isAdmin ? 'Welcome back to your\nhomeschool hub!' : 'Ready to learn something\namazing today?'}
-          </h2>
-          <p className="text-violet-200 text-sm max-w-md leading-relaxed">
-            {isEmpty
-              ? 'No data yet — add your first child and subject to get started!'
-              : isAdmin
-                ? `Managing ${kids.length} kid${kids.length !== 1 ? 's' : ''} · ${subjects.length} subjects · ${scheduledTasks} scheduled tasks.`
-                : 'Your learning journey continues. Keep up the great work!'}
-          </p>
-          <div className="flex flex-wrap gap-3 mt-5">
-            <button
-              onClick={() => navigate('/subjects')}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-violet-700 rounded-xl text-sm font-semibold hover:bg-violet-50 transition-colors shadow-sm"
-            >
-              <BookOpen size={15} /> Browse Subjects
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/kids')}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-xl text-sm font-semibold hover:bg-white/20 transition-colors"
-              >
-                <Users size={15} /> View Kids
-              </button>
-            )}
-            <button
-              onClick={refresh}
-              title="Refresh data"
-              className="flex items-center gap-2 px-3 py-2 bg-white/10 text-white/70 border border-white/10 rounded-xl text-sm hover:bg-white/20 transition-colors"
-            >
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       {/* ── Stats Grid ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconBg="bg-violet-50" iconColor="text-violet-600" sub="Enrolled learners" />
-        <StatCard label="Subjects"     value={subjects.length}   icon={BookOpen}     iconBg="bg-blue-50"   iconColor="text-blue-600"   sub="Active curriculum" />
+      <div className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
+        {isAdmin && kids.length > 1 && (
+          <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconBg="bg-violet-50" iconColor="text-violet-600" sub="Enrolled learners" />
+        )}
         <StatCard label="Topics Done"  value={`${completedTopics}/${topics.length}`} icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" sub="Topics completed" />
         <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp}   iconBg="bg-amber-50"  iconColor="text-amber-600"  sub="Across subjects" />
       </div>
@@ -191,7 +149,7 @@ export function DashboardPage() {
         </div>
 
         {/* Kids Overview / Student Stats */}
-        {isAdmin ? (
+        {isAdmin && kids.length > 1 ? (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
             <SectionHeader title="Kids Overview" actionLabel="All Kids" onAction={() => navigate('/kids')} />
             {kids.length === 0 ? (
@@ -224,7 +182,7 @@ export function DashboardPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
-            <SectionHeader title="My Stats" />
+            <SectionHeader title={isAdmin ? "Student Stats" : "My Stats"} />
             <div className="grid grid-cols-2 gap-3">
               {[
                 { icon: GraduationCap, label: 'Subjects',   value: subjects.length,                         color: 'text-violet-600', bg: 'bg-violet-50' },

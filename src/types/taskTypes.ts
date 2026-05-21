@@ -90,6 +90,8 @@ export interface UpdateProgressPayload {
   learning_stage?: LearningStage;
   interest_level?: InterestLevel;
   learned_count?: number;
+  target_count?: number;
+  repeat_interval?: number;
   next_due_at?: string;
   notes?: string;
   is_scheduled_this_week?: boolean;

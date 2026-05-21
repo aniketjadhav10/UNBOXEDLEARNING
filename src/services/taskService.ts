@@ -150,14 +150,21 @@ export async function updateTaskProgress(payload: UpdateProgressPayload): Promis
 }
 
 // ── Mark practiced today ─────────────────────────────────────
-export async function markPracticedToday(taskId: string, currentLearnedCount: number): Promise<void> {
+export async function markPracticedToday(
+  taskId: string,
+  updates: {
+    learned_count: number;
+    learning_stage?: string;
+    next_due_at?: string | null;
+  }
+): Promise<void> {
   const now = new Date().toISOString();
   const { error } = await supabase
     .from('task_progress')
     .update({
       last_practiced_at: now,
-      learned_count: currentLearnedCount + 1,
       updated_at: now,
+      ...updates,
     })
     .eq('task_id', taskId);
   if (error) throw new Error(error.message);
@@ -179,9 +186,10 @@ export async function assignTaskToChild(taskId: string, childId: string): Promis
     .insert({
       task_id: taskId,
       child_id: childId,
-      learning_stage: 'Introduced',
+      learning_stage: 'Not_Started',
       learned_count: 0,
-      target_count: 10, // Default goal
+      target_count: 5, // Default goal
+      repeat_interval: 1,
       is_active: true,
       is_scheduled_this_week: false
     });

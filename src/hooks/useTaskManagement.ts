@@ -31,7 +31,7 @@ const EMPTY_FILTER: TaskFilter = {
   interestLevel: 0,
 };
 
-export function useTaskManagement(childId: string) {
+export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' | 'overdue' | 'mastered' | 'scheduled' = 'all') {
   // ── Data state ──────────────────────────────────────────────
   const [tasks, setTasks] = useState<TaskWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,11 @@ export function useTaskManagement(childId: string) {
   const [filter, setFilter] = useState<TaskFilter>(EMPTY_FILTER);
   const [sortKey, setSortKey] = useState<TaskSortKey>('next_due_at');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'overdue' | 'mastered'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'overdue' | 'mastered' | 'scheduled'>(defaultTab);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
   const [darkMode, setDarkMode] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches
   );
@@ -85,20 +89,60 @@ export function useTaskManagement(childId: string) {
   // ── Actions ──────────────────────────────────────────────────
   const handleMarkPracticed = useCallback(async (task: TaskWithProgress) => {
     const prevCount = task.progress?.learned_count ?? 0;
+    const targetCount = task.progress?.target_count ?? 5;
+    const repeatInterval = task.progress?.repeat_interval ?? 1;
+    const currentStage = task.progress?.learning_stage ?? 'Introduced';
     const now = new Date().toISOString();
+
+    const nextDueDate = new Date();
+    nextDueDate.setDate(nextDueDate.getDate() + repeatInterval);
+    const nextDueAt = nextDueDate.toISOString();
+
+    let newLearnedCount = prevCount + 1;
+    let newStage = currentStage;
+    let didUpgrade = false;
+
+    if (newLearnedCount >= targetCount && currentStage !== 'Needs_Practice') {
+      const stages: LearningStage[] = ['Not_Started', 'Introduced', 'Practicing', 'Comfortable', 'Confident'];
+      const currentIndex = stages.indexOf(currentStage as LearningStage);
+      if (currentIndex >= 0 && currentIndex < stages.length - 1) {
+        newStage = stages[currentIndex + 1];
+        newLearnedCount = 0;
+        didUpgrade = true;
+      }
+    }
+
+    if (newLearnedCount > targetCount) {
+      newLearnedCount = targetCount;
+    }
 
     // Optimistic update
     patchTask(task.id, (t) => ({
       ...t,
       progress: t.progress
-        ? { ...t.progress, learned_count: prevCount + 1, last_practiced_at: now }
+        ? { 
+            ...t.progress, 
+            learned_count: newLearnedCount, 
+            last_practiced_at: now,
+            learning_stage: newStage,
+            next_due_at: nextDueAt
+          }
         : t.progress,
-      progressPercent: Math.min(100, Math.round(((prevCount + 1) / (t.progress?.target_count ?? 10)) * 100)),
+      progressPercent: Math.min(100, Math.round((newLearnedCount / targetCount) * 100)),
     }));
 
     try {
-      await markPracticedToday(task.id, prevCount);
+      await markPracticedToday(task.id, {
+        learned_count: newLearnedCount,
+        learning_stage: newStage,
+        next_due_at: nextDueAt
+      });
       addToast('success', `✅ "${task.name}" marked as practiced!`);
+      if (didUpgrade) {
+        setTimeout(() => {
+          addToast('info', `🎉 Task upgraded to ${newStage.replace('_', ' ')}!`);
+        }, 500);
+      }
     } catch {
       // Rollback
       patchTask(task.id, () => task);
@@ -156,10 +200,38 @@ export function useTaskManagement(childId: string) {
     const task = tasks.find((t) => t.id === payload.task_id);
     if (!task) return;
 
+    let finalPayload = { ...payload };
+    const targetCount = finalPayload.target_count ?? task.progress?.target_count ?? 5;
+    const currentStage = finalPayload.learning_stage ?? task.progress?.learning_stage ?? 'Introduced';
+    let newLearnedCount = finalPayload.learned_count ?? task.progress?.learned_count ?? 0;
+
+    let didUpgrade = false;
+    let upgradedStage = currentStage;
+
+    if (newLearnedCount >= targetCount && currentStage !== 'Needs_Practice') {
+      const stages: LearningStage[] = ['Not_Started', 'Introduced', 'Practicing', 'Comfortable', 'Confident'];
+      const currentIndex = stages.indexOf(currentStage as LearningStage);
+      if (currentIndex >= 0 && currentIndex < stages.length - 1) {
+        upgradedStage = stages[currentIndex + 1];
+        finalPayload.learning_stage = upgradedStage;
+        newLearnedCount = 0;
+        didUpgrade = true;
+      }
+    }
+
+    if (newLearnedCount > targetCount) {
+      newLearnedCount = targetCount;
+    }
+    finalPayload.learned_count = newLearnedCount;
+
     try {
-      await updateTaskProgress(payload);
+      await updateTaskProgress(finalPayload);
       await load(); // refresh for complex updates
-      addToast('success', 'Task updated successfully');
+      if (didUpgrade) {
+        addToast('success', `Task updated! 🎉 Auto-upgraded to ${upgradedStage.replace('_', ' ')}`);
+      } else {
+        addToast('success', 'Task updated successfully');
+      }
     } catch {
       addToast('error', 'Update failed. Please retry.');
     }
@@ -188,6 +260,7 @@ export function useTaskManagement(childId: string) {
     else if (activeTab === 'mastered') result = result.filter((t) =>
       ['Confident', 'Comfortable'].includes(t.progress?.learning_stage ?? '')
     );
+    else if (activeTab === 'scheduled') result = result.filter((t) => t.progress?.is_scheduled_this_week);
 
     // Advanced filters
     if (filter.subject) result = result.filter((t) => t.topic_id === filter.subject); // Note: filter by topic_id since subject_id isn't on task table

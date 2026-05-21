@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   BrainCircuit,
+  CalendarClock,
   ChevronLeft,
   GraduationCap,
   Home,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import { useMemo } from 'react';
 
 interface NavItem {
   label: string;
@@ -30,6 +33,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Topics',     path: '/topics',      icon: ListChecks   },
   { label: 'Activities', path: '/activities',  icon: Zap          },
   { label: 'Tasks',      path: '/tasks',       icon: BrainCircuit },
+  { label: 'Scheduled',  path: '/scheduled',   icon: CalendarClock},
   { label: 'Reports',    path: '/reports',     icon: BarChart3    },
   { label: 'Settings',   path: '/settings',    icon: Settings     },
 ];
@@ -49,8 +53,16 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, isAdmin, signOut } = useAuth();
+  const { kids } = useData();
   const navigate = useNavigate();
-  const navItems = isAdmin ? ADMIN_NAV : STUDENT_NAV;
+  
+  const navItems = useMemo(() => {
+    let items = isAdmin ? ADMIN_NAV : STUDENT_NAV;
+    if (isAdmin && kids.length <= 1) {
+      items = items.filter((item) => item.label !== 'Kids');
+    }
+    return items;
+  }, [isAdmin, kids.length]);
 
   async function handleSignOut() {
     await signOut();
