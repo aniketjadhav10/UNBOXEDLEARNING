@@ -1,7 +1,7 @@
 // ============================================================
 // HierarchicalCard — Generic card for Subjects, Topics, Tasks, Activities
 // ============================================================
-import { Edit2, MoreVertical, Trash2 } from 'lucide-react';
+import { Edit2, MoreVertical, Trash2, Calendar } from 'lucide-react';
 import { useState } from 'react';
 
 interface HierarchicalCardProps {
@@ -12,9 +12,10 @@ interface HierarchicalCardProps {
   badge?: React.ReactNode;
   progress?: number;
   progressColor?: string;
-  footerItems?: { label: string; value: string | number; icon?: React.ReactNode }[];
-  onEdit: () => void;
-  onDelete: () => void;
+  footerItems?: { label: string; value: React.ReactNode; icon?: React.ReactNode }[];
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onSchedule?: () => void;
   onClick: () => void;
 }
 
@@ -29,6 +30,7 @@ export function HierarchicalCard({
   footerItems,
   onEdit,
   onDelete,
+  onSchedule,
   onClick,
 }: HierarchicalCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,33 +59,53 @@ export function HierarchicalCard({
           </div>
         </div>
 
-        {/* ── Kebab Menu (⋮) ─────────────────────────────── */}
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <MoreVertical size={16} />
-          </button>
+        {/* ── Card Header Actions ─────────────────────────────── */}
+        <div className="relative flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {onSchedule && (
+            <button
+              onClick={onSchedule}
+              title="Schedule Task"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-50/70 hover:bg-violet-100 text-violet-600 rounded-lg transition-all"
+              aria-label="Schedule Task"
+            >
+              <Calendar size={12} className="stroke-[2.5]" />
+              <span className="text-[10px] font-black uppercase tracking-wider leading-none">Schedule</span>
+            </button>
+          )}
 
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 animate-fade-in">
-                <button
-                  onClick={() => { onEdit(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-violet-50 hover:text-violet-700 transition-colors"
-                >
-                  <Edit2 size={12} /> Edit
-                </button>
-                <button
-                  onClick={() => { onDelete(); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 size={12} /> Delete
-                </button>
-              </div>
-            </>
+          {(onEdit || onDelete) && (
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center"
+              >
+                <MoreVertical size={16} />
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 animate-fade-in">
+                    {onEdit && (
+                      <button
+                        onClick={() => { onEdit(); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+                      >
+                        <Edit2 size={12} /> Edit
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={() => { onDelete(); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -118,7 +140,7 @@ export function HierarchicalCard({
 
       {/* ── Footer Stats ──────────────────────────────────── */}
       {footerItems && footerItems.length > 0 && (
-        <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-50 flex items-center gap-4">
+        <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-50 flex flex-wrap items-center gap-4">
           {footerItems.map((item, idx) => (
             <div key={idx} className="flex items-center gap-1.5 min-w-0">
               {item.icon && <div className="text-gray-300">{item.icon}</div>}
@@ -126,9 +148,13 @@ export function HierarchicalCard({
                 <span className="text-[10px] text-gray-400 block leading-none uppercase font-bold tracking-tighter">
                   {item.label}
                 </span>
-                <span className="text-[11px] font-black text-gray-700 truncate">
-                  {item.value}
-                </span>
+                {typeof item.value === 'string' || typeof item.value === 'number' ? (
+                  <span className="text-[11px] font-black text-gray-700 truncate block">
+                    {item.value}
+                  </span>
+                ) : (
+                  item.value
+                )}
               </div>
             </div>
           ))}

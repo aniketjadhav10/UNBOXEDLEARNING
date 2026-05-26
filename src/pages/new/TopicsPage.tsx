@@ -5,7 +5,7 @@
 import { Layers, Search, BarChart2, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Breadcrumbs } from '../../components/curriculum/Breadcrumbs';
+import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
@@ -46,7 +46,7 @@ const TOPIC_FIELDS: FormField[] = [
 export function TopicsPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
-  const { rawTasks, taskProgress } = useData();
+  const { rawTasks, taskProgress, rawSubjects } = useData();
   const toast = useToast();
 
   const [subject,        setSubject]        = useState<DbSubject | null>(null);
@@ -62,10 +62,22 @@ export function TopicsPage() {
 
   const debouncedSearch = useDebounce(search, 300);
 
+  const fields = useMemo(() => {
+    if (subjectId) return TOPIC_FIELDS;
+    const subjectOptions = rawSubjects.map(s => ({
+      value: s.id,
+      label: s.name,
+    }));
+    return [
+      { name: 'subject_id', label: 'Subject', type: 'select' as const, options: subjectOptions, required: true },
+      ...TOPIC_FIELDS
+    ];
+  }, [subjectId, rawSubjects]);
+
   useDocumentTitle(subject ? `${subject.name} · Topics` : 'Topics');
 
   useEffect(() => {
-    if (subjectId) loadData();
+    loadData();
   }, [subjectId]);
 
   // Reset pagination on search
@@ -77,12 +89,18 @@ export function TopicsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [subjectData, topicsData] = await Promise.all([
-        fetchSubjectById(subjectId!),
-        fetchTopics(subjectId!),
-      ]);
-      setSubject(subjectData);
-      setTopics(topicsData);
+      if (subjectId) {
+        const [subjectData, topicsData] = await Promise.all([
+          fetchSubjectById(subjectId),
+          fetchTopics(subjectId),
+        ]);
+        setSubject(subjectData);
+        setTopics(topicsData);
+      } else {
+        const topicsData = await fetchTopics();
+        setSubject(null);
+        setTopics(topicsData);
+      }
     } catch (err) {
       setError((err as Error).message || 'Failed to load topics.');
     } finally {
@@ -165,17 +183,16 @@ export function TopicsPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-24">
-      <Breadcrumbs items={[
-        { label: subject?.name || 'Subjects', path: '/subjects' },
-        { label: 'Topics' },
-      ]} />
+    <div className="animate-fade-in pb-4">
+      <div className="mb-2">
+        <BackButton />
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">{subject?.name || 'Topics'}</h1>
+          <h1 className="text-2xl font-black text-gray-900">{subject?.name || 'All Topics'}</h1>
           <p className="text-sm text-gray-400">
-            {topics.length} topic{topics.length !== 1 ? 's' : ''} · Learning areas in this subject
+            {topics.length} topic{topics.length !== 1 ? 's' : ''} · {subject ? 'Learning areas in this subject' : 'All registered learning areas'}
           </p>
         </div>
 
@@ -195,8 +212,8 @@ export function TopicsPage() {
       {topics.length === 0 ? (
         <EmptyState
           icon={Layers}
-          title="No topics in this subject"
-          description="Create topics to break this subject into manageable learning units."
+          title={subject ? "No topics in this subject" : "No topics found"}
+          description={subject ? "Create topics to break this subject into manageable learning units." : "Add a topic to get started!"}
           actionLabel="Add Topic"
           onAction={() => setModalOpen(true)}
         />
@@ -207,14 +224,17 @@ export function TopicsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.slice(0, visibleCount).map((topic) => {
               const stats = topicStats[topic.id] ?? { tasksCount: 0, completed: false, progress: 0 };
               const difficulty = normalizeDifficulty(topic.difficulty_level);
+              const parentSubject = rawSubjects.find(s => s.id === topic.subject_id);
+              const subtitle = subject ? undefined : (parentSubject?.name || undefined);
               return (
                 <HierarchicalCard
                   key={topic.id}
                   title={topic.title}
+                  subtitle={subtitle}
                   description={topic.description || undefined}
                   icon={<Layers size={20} />}
                   badge={
@@ -256,7 +276,7 @@ export function TopicsPage() {
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditingTopic(null); }}
         title={editingTopic ? 'Edit Topic' : 'Add Topic'}
-        fields={TOPIC_FIELDS}
+        fields={fields}
         initialData={editingTopic}
         onSubmit={handleSubmit}
       />

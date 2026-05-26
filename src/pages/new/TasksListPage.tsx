@@ -3,16 +3,17 @@
 // Fixed: uses fetchTopicById, fetchSubjectById. Uses ConfirmModal.
 // Has error state. Wires real progress data.
 // ============================================================
-import { Layers, CheckSquare, Search, Zap, Clock, AlertTriangle } from 'lucide-react';
+import { Layers, CheckSquare, Search, Zap, Clock, AlertTriangle, CalendarDays, Star, Target, BrainCircuit } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Breadcrumbs } from '../../components/curriculum/Breadcrumbs';
+import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { TaskScheduleModal } from '../../components/curriculum/TaskScheduleModal';
 import {
   fetchTasksByTopic,
   fetchTopicById,
@@ -28,6 +29,8 @@ import { assignTaskToChild } from '../../services/taskService';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { DbTopic, DbSubject, DbTask } from '../../types/database';
+import type { SupabaseTaskProgress } from '../../types/taskTypes';
+import { supabase } from '../../services/supabase';
 
 const TASK_FIELDS: FormField[] = [
   { name: 'name',             label: 'Task Name',   type: 'text',     placeholder: 'e.g. Solve 2D Word Problems', required: true },
@@ -49,6 +52,7 @@ export function TasksListPage() {
   const [topic,   setTopic]   = useState<DbTopic | null>(null);
   const [subject, setSubject] = useState<DbSubject | null>(null);
   const [tasks,   setTasks]   = useState<DbTask[]>([]);
+  const [progressMap, setProgressMap] = useState<Record<string, SupabaseTaskProgress>>({});
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [search,  setSearch]  = useState('');
@@ -59,6 +63,8 @@ export function TasksListPage() {
   const [confirmId,     setConfirmId]     = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [visibleCount,  setVisibleCount]  = useState(50);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [schedulingTaskId,  setSchedulingTaskId]  = useState<string | null>(null);
 
   useDocumentTitle(topic ? `${topic.title} · Tasks` : 'Tasks');
 
@@ -85,6 +91,21 @@ export function TasksListPage() {
       if (topicData?.subject_id) {
         const subjectData = await fetchSubjectById(topicData.subject_id);
         setSubject(subjectData);
+
+        if (subjectData?.child_id && tasksData.length > 0) {
+          const taskIds = tasksData.map((t) => t.id);
+          const { data: progData, error: progErr } = await supabase
+            .from('task_progress')
+            .select('*')
+            .in('task_id', taskIds)
+            .eq('child_id', subjectData.child_id);
+
+          if (!progErr && progData) {
+            const map: Record<string, SupabaseTaskProgress> = {};
+            progData.forEach((p) => { map[p.task_id] = p; });
+            setProgressMap(map);
+          }
+        }
       }
     } catch (err) {
       setError((err as Error).message || 'Failed to load tasks.');
@@ -166,14 +187,12 @@ export function TasksListPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-24">
-      <Breadcrumbs items={[
-        { label: subject?.name || 'Subject',    path: subject ? `/subjects/${subject.id}/topics` : '/subjects' },
-        { label: topic?.title  || 'Topic' },
-        { label: 'Tasks' },
-      ]} />
+    <div className="animate-fade-in pb-4">
+      <div className="mb-2">
+        <BackButton />
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900">{topic?.title || 'Tasks'}</h1>
           <p className="text-sm text-gray-400">
@@ -204,23 +223,37 @@ export function TasksListPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.slice(0, visibleCount).map((task) => (
-              <HierarchicalCard
-                key={task.id}
-                title={task.name}
-                subtitle={task.difficulty_level || undefined}
-                description={task.description || undefined}
-                icon={<CheckSquare size={20} />}
-                footerItems={[
-                  { label: 'Activities', value: '—', icon: <Zap size={12} /> },
-                  { label: 'Difficulty', value: task.difficulty_level || 'Standard', icon: <Clock size={12} /> },
-                ]}
-                onEdit={() => { setEditingTask(task); setModalOpen(true); }}
-                onDelete={() => setConfirmId(task.id)}
-                onClick={() => navigate(`/tasks/${task.id}/activities`)}
-              />
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.slice(0, visibleCount).map((task) => {
+              const prog = progressMap[task.id];
+              const targetCount = prog?.target_count ?? 5;
+              const learnedCount = prog?.learned_count ?? 0;
+              const progressPct = Math.min(100, Math.round((learnedCount / targetCount) * 100));
+
+              return (
+                <HierarchicalCard
+                  key={task.id}
+                  title={task.name}
+                  subtitle={task.difficulty_level || undefined}
+                  description={task.description || undefined}
+                  icon={<CheckSquare size={20} />}
+                  progress={prog ? progressPct : undefined}
+                  footerItems={[
+                    { label: 'Stage', value: prog?.learning_stage?.replace('_', ' ') || 'Not Started', icon: <BrainCircuit size={12} /> },
+                    { label: 'Count', value: `${learnedCount} / ${targetCount}`, icon: <Target size={12} /> },
+                    { label: 'Interest', value: `${prog?.interest_level ?? 3} / 5`, icon: <Star size={12} /> },
+                    { label: 'This Week', value: prog?.is_scheduled_this_week ? 'Yes' : 'No', icon: <CalendarDays size={12} /> },
+                  ]}
+                  onEdit={() => { setEditingTask(task); setModalOpen(true); }}
+                  onDelete={() => setConfirmId(task.id)}
+                  onSchedule={() => {
+                    setSchedulingTaskId(task.id);
+                    setScheduleModalOpen(true);
+                  }}
+                  onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                />
+              );
+            })}
           </div>
           {visibleCount < filtered.length && (
             <div className="flex justify-center mt-8">
@@ -259,6 +292,22 @@ export function TasksListPage() {
         confirmLabel="Delete Task"
         danger
       />
+
+      {scheduleModalOpen && schedulingTaskId && subject?.child_id && (
+        <TaskScheduleModal
+          isOpen={scheduleModalOpen}
+          onClose={() => {
+            setScheduleModalOpen(false);
+            setSchedulingTaskId(null);
+            loadData(); // reload to refresh progress & schedule indicators
+          }}
+          taskId={schedulingTaskId}
+          childId={subject.child_id}
+          onSaved={() => {
+            toast.success('Task scheduling updated!');
+          }}
+        />
+      )}
     </div>
   );
 }

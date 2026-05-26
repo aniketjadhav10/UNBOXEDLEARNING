@@ -58,13 +58,17 @@ export async function fetchSubjectById(id: string): Promise<DbSubject | null> {
   return data as DbSubject | null;
 }
 
-export async function fetchTopics(subjectId: string): Promise<DbTopic[]> {
-  const { data, error } = await supabase
+export async function fetchTopics(subjectId?: string): Promise<DbTopic[]> {
+  let query = supabase
     .from('topics')
     .select('*')
-    .eq('subject_id', subjectId)
-    .eq('is_active', true)
-    .order('order_index', { ascending: true });
+    .eq('is_active', true);
+
+  if (subjectId) {
+    query = query.eq('subject_id', subjectId);
+  }
+
+  const { data, error } = await query.order('order_index', { ascending: true });
   if (error) throw error;
   return data as DbTopic[];
 }

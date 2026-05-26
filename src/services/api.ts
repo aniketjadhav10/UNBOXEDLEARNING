@@ -51,4 +51,18 @@ export const api = {
       body: JSON.stringify({ id }),
     });
   },
+
+  sendFamilyInvite(email: string) {
+    return request<{
+      success: boolean;
+      code: string;
+      email: string;
+      emailSent: boolean;
+      smtpError?: string;
+      invitation: any;
+    }>('/api/family/invite', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
 };

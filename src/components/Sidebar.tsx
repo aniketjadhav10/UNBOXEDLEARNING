@@ -3,9 +3,11 @@ import {
   BarChart3,
   BookOpen,
   BrainCircuit,
+  CalendarCheck,
   CalendarClock,
   ChevronLeft,
   GraduationCap,
+  Heart,
   Home,
   ListChecks,
   LogOut,
@@ -20,6 +22,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 interface NavItem {
   label: string;
@@ -28,24 +31,26 @@ interface NavItem {
 }
 
 const ADMIN_NAV: NavItem[] = [
-  { label: 'Dashboard',  path: '/',           icon: Home         },
-  { label: 'Kids',       path: '/kids',        icon: Users        },
-  { label: 'Subjects',   path: '/subjects',    icon: BookOpen     },
-  { label: 'Topics',     path: '/topics',      icon: ListChecks   },
-  { label: 'Activities', path: '/activities',  icon: Zap          },
-  { label: 'Tasks',      path: '/tasks',       icon: BrainCircuit },
-  { label: 'Scheduled',  path: '/scheduled',   icon: CalendarClock},
-  { label: 'Archived',   path: '/archived',    icon: Archive      },
-  { label: 'Reports',    path: '/reports',     icon: BarChart3    },
-  { label: 'Settings',   path: '/settings',    icon: Settings     },
+  { label: 'Dashboard', path: '/', icon: Home },
+  { label: 'Subjects', path: '/subjects', icon: BookOpen },
+  { label: 'Topics', path: '/topics', icon: ListChecks },
+  { label: 'Tasks', path: '/tasks', icon: BrainCircuit },
+  { label: 'Activities', path: '/activities', icon: Zap },
+  { label: 'This Week', path: '/this-week', icon: CalendarCheck },
+  { label: 'Scheduled', path: '/scheduled', icon: CalendarClock },
+  { label: 'Reports', path: '/reports', icon: BarChart3 },
+  { label: 'Archived', path: '/archived', icon: Archive },
+  { label: 'Family', path: '/family', icon: Heart },
+  { label: 'Kids', path: '/kids', icon: Users },
+  { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const STUDENT_NAV: NavItem[] = [
-  { label: 'Dashboard',   path: '/',            icon: Home        },
+  { label: 'Dashboard', path: '/', icon: Home },
   { label: 'My Learning', path: '/my-learning', icon: GraduationCap },
-  { label: 'Subjects',    path: '/subjects',    icon: BookOpen    },
-  { label: 'Progress',    path: '/progress',    icon: TrendingUp  },
-  { label: 'Profile',     path: '/profile',     icon: Star        },
+  { label: 'Subjects', path: '/subjects', icon: BookOpen },
+  { label: 'Progress', path: '/progress', icon: TrendingUp },
+  { label: 'Profile', path: '/profile', icon: Star },
 ];
 
 interface SidebarProps {
@@ -54,10 +59,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { user, isAdmin, signOut } = useAuth();
+  const { isAdmin, signOut } = useAuth();
   const { kids } = useData();
   const navigate = useNavigate();
-  
+
   const navItems = useMemo(() => {
     let items = isAdmin ? ADMIN_NAV : STUDENT_NAV;
     if (isAdmin && kids.length <= 1) {
@@ -114,16 +119,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* ── User info pill ───────────────────────────────── */}
-        <div className="mx-4 mt-4 p-3 bg-white/10 rounded-xl flex items-center gap-3 border border-white/10">
-          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${user?.avatarColor ?? 'from-violet-500 to-purple-600'} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-            {user?.avatarInitials ?? '?'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-white text-xs font-semibold truncate">{user?.name ?? 'Loading…'}</p>
-            <p className="text-violet-300 text-xs capitalize">{user?.role ?? ''}</p>
-          </div>
-        </div>
 
         {/* ── Nav label ────────────────────────────────────── */}
         <p className="px-5 mt-5 mb-2 text-[10px] uppercase tracking-widest text-violet-400 font-semibold">
@@ -132,9 +127,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* ── Nav items ────────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto px-3 space-y-0.5 hide-scrollbar">
-          {navItems.map((item) => (
-            <NavLink
+          {navItems.map((item, index) => (
+            <motion.div
               key={item.path}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 24,
+                delay: 0.05 * index,
+              }}
+            >
+            <NavLink
               to={item.path}
               end={item.path === '/'}
               onClick={onClose}
@@ -164,6 +169,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </>
               )}
             </NavLink>
+            </motion.div>
           ))}
         </nav>
 

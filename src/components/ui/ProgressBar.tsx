@@ -1,4 +1,6 @@
-// Reusable ProgressBar component
+// Reusable ProgressBar component — with Framer Motion animated fill
+import { motion } from 'framer-motion';
+
 interface ProgressBarProps {
   value: number; // 0-100
   size?: 'sm' | 'md' | 'lg';
@@ -31,9 +33,16 @@ export function ProgressBar({
         </div>
       )}
       <div className={`w-full bg-gray-100 rounded-full overflow-hidden ${heights[size]}`}>
-        <div
-          className={`${heights[size]} rounded-full bg-gradient-to-r ${color} transition-all duration-700 ease-out`}
-          style={{ width: `${pct}%` }}
+        <motion.div
+          className={`${heights[size]} rounded-full bg-gradient-to-r ${color}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{
+            type: 'spring',
+            stiffness: 60,
+            damping: 15,
+            delay: 0.2,
+          }}
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
@@ -43,3 +52,4 @@ export function ProgressBar({
     </div>
   );
 }
+

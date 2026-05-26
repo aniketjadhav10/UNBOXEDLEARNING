@@ -2,9 +2,10 @@
 // MainLayout — Root layout: Sidebar + Navbar + Content area
 // ============================================================
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
+import { PageTransition } from '../components/motion/PageTransition';
 
 /* Map path segments → readable page titles */
 const PAGE_TITLES: Record<string, string> = {
@@ -14,8 +15,10 @@ const PAGE_TITLES: Record<string, string> = {
   'topics':      'All Topics',
   'activities':  'Activities',
   'tasks':       'Learning Tasks',
+  'this-week':   'This Week',
   'reports':     'Reports',
   'settings':    'Settings',
+  'family':      'Family Workspace',
   'my-learning': 'My Learning',
   'progress':    'My Progress',
   'profile':     'My Profile',
@@ -51,14 +54,15 @@ export function MainLayout() {
           pageTitle={pageTitle}
         />
 
-        {/* Scrollable content area */}
+        {/* Scrollable content area with page transitions */}
         <main
           id="main-content"
-          className="flex-1 overflow-y-auto px-4 py-6 lg:px-6 lg:py-8"
+          className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
         >
-          <Outlet />
+          <PageTransition />
         </main>
       </div>
     </div>
   );
 }
+

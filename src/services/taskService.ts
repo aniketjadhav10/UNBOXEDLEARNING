@@ -124,7 +124,7 @@ export function computeDashboardSummary(tasks: TaskWithProgress[]): DashboardSum
     .filter((v) => !isNaN(v));
     
   const avgInterest = interestLevels.length
-    ? interestLevels.reduce((a, b) => a + b, 0) / interestLevels.length
+    ? interestLevels.reduce((a, b) => a + Number(b), 0) / interestLevels.length
     : 0;
 
   // Compute real consistency from last_practiced_at dates (past 7 days)
@@ -138,7 +138,7 @@ export function computeDashboardSummary(tasks: TaskWithProgress[]): DashboardSum
     masteredCount:          tasks.filter((t) => ['Comfortable', 'Confident'].includes(t.progress?.learning_stage ?? '')).length,
     // is_scheduled_this_week lives in task_progress, not task table
     scheduledThisWeekCount: tasks.filter((t) => t.progress?.is_scheduled_this_week === true).length,
-    avgInterestLevel:       Math.round(avgInterest * 10) / 10,
+    avgInterestLevel:       Math.round(avgInterest),
     consistencyScore,
   };
 }

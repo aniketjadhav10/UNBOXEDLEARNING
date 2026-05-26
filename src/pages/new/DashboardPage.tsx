@@ -11,11 +11,17 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { fetchTasksWithProgress, computeDashboardSummary } from '../../services/taskService';
+import { DashboardSummaryWidgets } from '../../components/tasks/DashboardSummaryWidgets';
+import type { DashboardSummary } from '../../types/taskTypes';
+import { StaggerContainer, StaggerItem, ScaleOnHover, AnimatedCounter } from '../../components/motion/MotionWrappers';
 
 /* ─── Stat Card ─────────────────────────────────────────────── */
 function StatCard({
@@ -24,14 +30,25 @@ function StatCard({
   label: string; value: string | number;
   icon: React.ElementType; iconBg: string; iconColor: string; sub?: string;
 }) {
+  const numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
+  const isNumeric = !isNaN(numericValue) && typeof value !== 'string';
+  const suffix = typeof value === 'string' && value.endsWith('%') ? '%' : '';
+  const displayNum = suffix ? parseInt(String(value), 10) : numericValue;
+
   return (
-    <div className="bg-white rounded-2xl shadow-card p-5 flex items-center gap-4 border border-gray-100/80">
+    <div className="bg-white rounded-2xl shadow-card p-5 flex items-center gap-4 border border-gray-100/80 hover:shadow-card-hover transition-shadow duration-300">
       <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
         <Icon size={22} className={iconColor} />
       </div>
       <div>
         <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-2xl font-bold text-gray-900">
+          {isNumeric || suffix ? (
+            <AnimatedCounter value={displayNum} suffix={suffix} duration={1} />
+          ) : (
+            value
+          )}
+        </p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -59,6 +76,37 @@ export function DashboardPage() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { kids, subjects, topics, tasks, loading, error, isEmpty, refresh } = useData();
+  const { selectedChildId } = useSettingsStore();
+
+  const resolvedChildId = selectedChildId || (kids.length === 1 ? kids[0].id : null);
+  const childId = isAdmin ? (resolvedChildId || user?.id || '') : (user?.id || '');
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!childId) return;
+
+    let active = true;
+    async function loadSummary() {
+      setSummaryLoading(true);
+      try {
+        const data = await fetchTasksWithProgress(childId, 'all');
+        if (active) {
+          setSummary(computeDashboardSummary(data.filter(t => t.is_active !== false)));
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard summary metrics:', err);
+      } finally {
+        if (active) setSummaryLoading(false);
+      }
+    }
+
+    loadSummary();
+    return () => {
+      active = false;
+    };
+  }, [childId]);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -105,18 +153,32 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-
-
+    <div className="space-y-8">
+      {/* ── Summary Metrics Strip ────────────────────────────── */}
+      {summaryLoading ? (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-20 skeleton-shimmer rounded-2xl" />
+          ))}
+        </div>
+      ) : summary ? (
+        <DashboardSummaryWidgets summary={summary} />
+      ) : null}
 
       {/* ── Stats Grid ─────────────────────────────────────────── */}
-      <div className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
+      <StaggerContainer className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
         {isAdmin && kids.length > 1 && (
-          <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconBg="bg-violet-50" iconColor="text-violet-600" sub="Enrolled learners" />
+          <StaggerItem>
+            <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconBg="bg-violet-50" iconColor="text-violet-600" sub="Enrolled learners" />
+          </StaggerItem>
         )}
-        <StatCard label="Topics Done"  value={`${completedTopics}/${topics.length}`} icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" sub="Topics completed" />
-        <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp}   iconBg="bg-amber-50"  iconColor="text-amber-600"  sub="Across subjects" />
-      </div>
+        <StaggerItem>
+          <StatCard label="Topics Done"  value={`${completedTopics}/${topics.length}`} icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" sub="Topics completed" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp}   iconBg="bg-amber-50"  iconColor="text-amber-600"  sub="Across subjects" />
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* ── Content grid ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -127,10 +189,10 @@ export function DashboardPage() {
           {subjects.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No subjects yet. Add a child first.</p>
           ) : (
-            <div className="space-y-4">
+          <div className="space-y-4">
               {subjects.slice(0, 5).map((s) => (
+                <ScaleOnHover key={s.id} scale={1.01}>
                 <div
-                  key={s.id}
                   className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-xl p-2 -mx-2 transition-colors"
                   onClick={() => navigate(`/subjects/${s.id}/topics`)}
                 >
@@ -143,6 +205,7 @@ export function DashboardPage() {
                     <ProgressBar value={s.progress} size="sm" color={s.gradient} />
                   </div>
                 </div>
+                </ScaleOnHover>
               ))}
             </div>
           )}

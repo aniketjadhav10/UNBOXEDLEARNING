@@ -16,15 +16,18 @@
     "framer-motion": "^12.38.0",
     "idb": "^8.0.2",
     "lucide-react": "^0.468.0",
+    "nodemailer": "^6.9.13",
     "openai": "^4.76.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
+    "recharts": "^3.8.1",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^6.4.15",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vercel/node": "^3.2.20",

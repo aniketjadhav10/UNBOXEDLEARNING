@@ -3,12 +3,13 @@
 // Fixed: uses fetchTaskById, fetchTopicById, fetchSubjectById.
 // Uses ConfirmModal, error state, debounced search.
 // ============================================================
-import { Zap, Search, Clock, Box, PlayCircle, AlertTriangle } from 'lucide-react';
+import { Zap, Search, Clock, Box, PlayCircle, AlertTriangle, CalendarDays } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Breadcrumbs } from '../../components/curriculum/Breadcrumbs';
+import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { TaskScheduleModal } from '../../components/curriculum/TaskScheduleModal';
 import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
@@ -59,6 +60,7 @@ export function ActivitiesListPage() {
   const [confirmId,       setConfirmId]       = useState<string | null>(null);
   const [confirmLoading,  setConfirmLoading]  = useState(false);
   const [visibleCount,    setVisibleCount]    = useState(50);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   useDocumentTitle(task ? `${task.name} · Activities` : 'Activities');
 
@@ -154,15 +156,12 @@ export function ActivitiesListPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-24">
-      <Breadcrumbs items={[
-        { label: subject?.name || 'Subject', path: subject ? `/subjects/${subject.id}/topics` : '/subjects' },
-        { label: topic?.title  || 'Topic',   path: topic   ? `/topics/${topic.id}/tasks`         : '/subjects' },
-        { label: task?.name    || 'Task',    path: topic   ? `/topics/${topic.id}/tasks`         : '/subjects' },
-        { label: 'Activities' },
-      ]} />
+    <div className="animate-fade-in pb-4">
+      <div className="mb-2">
+        <BackButton />
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900">{task?.name || 'Activities'}</h1>
           <p className="text-sm text-gray-400">
@@ -170,16 +169,26 @@ export function ActivitiesListPage() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search activities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-violet-50 focus:border-violet-300 transition-all shadow-sm"
-            aria-label="Search activities"
-          />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {subject?.child_id && taskId && (
+            <button
+              onClick={() => setScheduleModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-violet-50 text-violet-700 hover:bg-violet-100 font-semibold text-sm rounded-2xl transition-colors shadow-sm shrink-0"
+            >
+              <CalendarDays size={16} /> Schedule
+            </button>
+          )}
+          <div className="relative flex-1 sm:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search activities..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-violet-50 focus:border-violet-300 transition-all shadow-sm"
+              aria-label="Search activities"
+            />
+          </div>
         </div>
       </div>
 
@@ -193,7 +202,7 @@ export function ActivitiesListPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.slice(0, visibleCount).map((activity) => (
               <HierarchicalCard
                 key={activity.id}
@@ -249,6 +258,18 @@ export function ActivitiesListPage() {
         confirmLabel="Delete Activity"
         danger
       />
+
+      {taskId && subject?.child_id && (
+        <TaskScheduleModal
+          isOpen={scheduleModalOpen}
+          onClose={() => setScheduleModalOpen(false)}
+          taskId={taskId}
+          childId={subject.child_id}
+          onSaved={() => {
+            toast.success('Task scheduling updated!');
+          }}
+        />
+      )}
     </div>
   );
 }

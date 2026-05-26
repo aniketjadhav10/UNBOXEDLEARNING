@@ -14,7 +14,6 @@ import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
 import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { TaskFilters } from '../../components/tasks/TaskFilters';
-import { DashboardSummaryWidgets } from '../../components/tasks/DashboardSummaryWidgets';
 import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
 import { useTaskManagement } from '../../hooks/useTaskManagement';
 import type { TaskWithProgress } from '../../types/taskTypes';
@@ -179,16 +178,7 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
           </div>
         </div>
 
-        {/* ── Dashboard Summary Widgets ────────────────────────── */}
-        {loading ? (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 animate-pulse">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-20 bg-gray-100 rounded-2xl" />
-            ))}
-          </div>
-        ) : error ? null : summary ? (
-          <DashboardSummaryWidgets summary={summary} />
-        ) : null}
+
 
         {/* ── Tabs ─────────────────────────────────────────────── */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl">

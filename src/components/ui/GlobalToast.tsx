@@ -2,7 +2,7 @@
 // components/ui/GlobalToast.tsx — Global toast renderer
 // Reads from useToastStore — place once in App root layout
 // ============================================================
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { useToastStore, type Toast } from '../../store/useToastStore';
 
@@ -18,8 +18,17 @@ function ToastItem({ toast }: { toast: Toast }) {
   const { icon: Icon, classes, iconColor } = TOAST_CONFIG[toast.type];
 
   return (
-    <div
-      className={`flex items-start gap-3 w-80 px-4 py-3.5 rounded-2xl border shadow-lg animate-slide-in ${classes}`}
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 40, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 80, scale: 0.95 }}
+      transition={{
+        type: 'spring',
+        stiffness: 400,
+        damping: 25,
+      }}
+      className={`flex items-start gap-3 w-80 px-4 py-3.5 rounded-2xl border shadow-lg ${classes}`}
       role="alert"
       aria-live="polite"
     >
@@ -37,7 +46,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       >
         <X size={14} />
       </button>
-    </div>
+    </motion.div>
   );
 }
 
@@ -49,11 +58,14 @@ export function GlobalToast() {
       className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none"
       aria-label="Notifications"
     >
-      {toasts.map((toast) => (
-        <div key={toast.id} className="pointer-events-auto">
-          <ToastItem toast={toast} />
-        </div>
-      ))}
+      <AnimatePresence mode="popLayout">
+        {toasts.map((toast) => (
+          <div key={toast.id} className="pointer-events-auto">
+            <ToastItem toast={toast} />
+          </div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
+

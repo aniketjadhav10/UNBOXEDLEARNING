@@ -5,11 +5,19 @@ export type TableName = 'subjects' | 'topics' | 'tasks' | 'activities' | 'ai_inb
 export async function getAll<T>(table: TableName) {
   let query = supabase.from(table).select('*');
 
-  query = query.eq('is_active', true);
+  const hasActiveAndOrder = ['subjects', 'topics', 'tasks', 'activities'].includes(table);
 
-  const { data, error } = await query.order('order_index', { ascending: true, nullsFirst: false });
-  if (error) throw error;
-  return (data ?? []) as T[];
+  if (hasActiveAndOrder) {
+    query = query.eq('is_active', true);
+    const { data, error } = await query.order('order_index', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    return (data ?? []) as T[];
+  } else {
+    const orderBy = table === 'ai_inbox' ? 'created_at' : 'created_at'; // Default order for non-curriculum tables
+    const { data, error } = await query.order(orderBy, { ascending: table !== 'ai_inbox' });
+    if (error) throw error;
+    return (data ?? []) as T[];
+  }
 }
 
 export async function insert<T>(table: TableName, data: Record<string, unknown>) {

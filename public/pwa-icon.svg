@@ -1,7 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Homeschool Manager">
-  <rect width="512" height="512" rx="96" fill="#16211f"/>
-  <path fill="#e8f2f4" d="M132 132c0-18 14-32 32-32h184c18 0 32 14 32 32v248c0 18-14 32-32 32H164c-18 0-32-14-32-32V132Z"/>
-  <path fill="#3f6b57" d="M176 156h160v36H176zM176 224h160v28H176zM176 284h112v28H176z"/>
-  <circle cx="340" cy="342" r="34" fill="#b46f4d"/>
-  <path fill="#16211f" d="M332 326h16v40h-16zM320 338h40v16h-40z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="UnBoxed Learning">
+  <!-- White Background with slight border -->
+  <rect width="512" height="512" rx="112" fill="#ffffff" stroke="#f3f4f6" stroke-width="8"/>
+  
+  <!-- Brand Gradient Def -->
+  <defs>
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Inner Brand Logo Icon -->
+  <rect x="96" y="96" width="320" height="320" rx="80" fill="url(#brand-grad)" />
+  
+  <!-- Graduation Cap Icon (White, Centered at 256, 256) -->
+  <g fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(144, 144) scale(9.333)">
+    <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+    <path d="M21.5 12H22v5a1 1 0 0 1-1 1h-1"/>
+  </g>
 </svg>

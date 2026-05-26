@@ -45,7 +45,7 @@ export function DashboardSummaryWidgets({ summary }: DashboardSummaryProps) {
     },
     {
       label: 'Avg Interest',
-      value: `${summary.avgInterestLevel.toFixed(1)} ★`,
+      value: `${summary.avgInterestLevel} ★`,
       icon: Flame,
       color: 'from-amber-500 to-yellow-500',
       bg: 'bg-amber-50',

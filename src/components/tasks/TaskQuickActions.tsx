@@ -45,56 +45,55 @@ export function TaskQuickActions({
       </button>
 
       {/* Stage dropdown */}
-      {!isFullyMastered && (
+      {/* {!isFullyMastered && (
         <div className="relative">
-        <button
-          onClick={() => setStageMenuOpen((v) => !v)}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-all duration-200"
-        >
-          <RotateCcw size={11} />
-          Stage
-          <ChevronDown size={11} className={`transition-transform ${stageMenuOpen ? 'rotate-180' : ''}`} />
-        </button>
+          <button
+            onClick={() => setStageMenuOpen((v) => !v)}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-all duration-200"
+          >
+            <RotateCcw size={11} />
+            Stage
+            <ChevronDown size={11} className={`transition-transform ${stageMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
 
-        {stageMenuOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setStageMenuOpen(false)}
-              aria-hidden="true"
-            />
-            <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in">
-              {LEARNING_STAGES.filter(s => 
-                task.progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true
-              ).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => {
-                    onUpdateStage(task, s);
-                    setStageMenuOpen(false);
-                  }}
-                  className={[
-                    'w-full text-left px-3 py-2 text-xs font-medium hover:bg-violet-50 hover:text-violet-700 transition-colors',
-                    task.progress?.learning_stage === s ? 'text-violet-700 bg-violet-50' : 'text-gray-600',
-                  ].join(' ')}
-                >
-                  {s.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      )}
+          {stageMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setStageMenuOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in">
+                {LEARNING_STAGES.filter(s =>
+                  task.progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true
+                ).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      onUpdateStage(task, s);
+                      setStageMenuOpen(false);
+                    }}
+                    className={[
+                      'w-full text-left px-3 py-2 text-xs font-medium hover:bg-violet-50 hover:text-violet-700 transition-colors',
+                      task.progress?.learning_stage === s ? 'text-violet-700 bg-violet-50' : 'text-gray-600',
+                    ].join(' ')}
+                  >
+                    {s.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )} */}
 
       {/* Reschedule button */}
       <button
         onClick={() => onToggleSchedule?.(task)}
         disabled={isNotStarted}
         className={[
-          isFullyMastered 
-            ? "flex-1 px-3 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-            : "p-1.5 rounded-lg transition-colors disabled:opacity-50",
+          "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 disabled:opacity-50",
+          isFullyMastered ? "flex-1 justify-center" : "",
           task.progress?.is_scheduled_this_week
             ? "text-violet-600 bg-violet-50 hover:bg-violet-100"
             : "text-gray-500 hover:text-violet-600 hover:bg-violet-50"
@@ -102,7 +101,7 @@ export function TaskQuickActions({
         title={task.progress?.is_scheduled_this_week ? "Unschedule" : "Schedule for this week"}
       >
         <Calendar size={13} />
-        {isFullyMastered && <span>{task.progress?.is_scheduled_this_week ? "Scheduled this week" : "Learn this week"}</span>}
+        <span>This Week</span>
       </button>
 
       {/* Archive / Unarchive */}

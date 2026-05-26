@@ -5,7 +5,7 @@
 import { BookOpen, Search, BarChart2, Hash } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Breadcrumbs } from '../../components/curriculum/Breadcrumbs';
+import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
@@ -147,10 +147,12 @@ export function SubjectsPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-24">
-      <Breadcrumbs items={[]} />
+    <div className="animate-fade-in pb-4">
+      <div className="mb-2">
+        <BackButton />
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900">Curriculum</h1>
           <p className="text-sm text-gray-400">
@@ -186,7 +188,7 @@ export function SubjectsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filtered.slice(0, visibleCount).map((subject) => {
               const stats = subjectStats[subject.id] ?? { progress: 0, topicsCount: 0, tasksCount: 0 };
               return (
