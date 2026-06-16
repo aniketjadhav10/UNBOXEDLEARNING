@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { CronExpressionParser } from 'cron-parser';
 
-import { renderEveningProgressEmail } from '../emails/templates/evening-progress.js';
+import { renderEveningProgressEmail } from '../../src/lib/email-templates/evening-progress.js';
 
 // Initialize Supabase admin client (requires Service Role Key to bypass RLS)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
