@@ -7,3 +7,5 @@ dist
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
+
+.vercel

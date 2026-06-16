@@ -97,3 +97,20 @@ export interface DbActivity {
   created_at: string;
   updated_at: string;
 }
+
+export interface DbEmailLog {
+  id: string;
+  sent_at: string;
+  status: 'success' | 'failed';
+  error_message: string | null;
+  recipient: string | null;
+  tasks_learned_count: number | null;
+  tasks_pending_count: number | null;
+}
+
+export interface DbSystemSetting {
+  id: string;
+  key: string;
+  value: string;
+  updated_at: string;
+}

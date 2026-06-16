@@ -59,6 +59,7 @@ export interface TaskWithProgress extends SupabaseTask {
   progressPercent: number;
   isOverdue: boolean;
   isDueToday: boolean;
+  isPracticedToday: boolean;
   isInactive: boolean; // not practiced in >14 days
   masteryPredictionDays?: number; // estimated days to mastery
   recommendedAction: string;

@@ -1,36 +1,30 @@
 // ============================================================
 // TasksListPage — Hierarchical level 3: Tasks under a Topic
-// Fixed: uses fetchTopicById, fetchSubjectById. Uses ConfirmModal.
-// Has error state. Wires real progress data.
 // ============================================================
-import { Layers, CheckSquare, Search, Zap, Clock, AlertTriangle, CalendarDays, Star, Target, BrainCircuit } from 'lucide-react';
+import { CheckSquare, Search, AlertTriangle, BookOpen, Zap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
-import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
-import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
-import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { TaskScheduleModal } from '../../components/curriculum/TaskScheduleModal';
-import {
-  fetchTasksByTopic,
-  fetchTopicById,
-  fetchSubjectById,
-  createItem,
-  updateItem,
-  deleteItem,
-} from '../../services/curriculumService';
-import { useToast } from '../../store/useToastStore';
+import { StaggerContainer, StaggerItem } from '../../components/motion/MotionWrappers';
+
+import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
+import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
+import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
+import { useTaskManagement } from '../../hooks/useTaskManagement';
+import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+
+import { fetchTopicById, createItem } from '../../services/curriculumService';
+import { assignTaskToChild } from '../../services/taskService';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { assignTaskToChild } from '../../services/taskService';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { useDebounce } from '../../hooks/useDebounce';
-import type { DbTopic, DbSubject, DbTask } from '../../types/database';
-import type { SupabaseTaskProgress } from '../../types/taskTypes';
 import { supabase } from '../../services/supabase';
+import type { DbTopic, DbTask, DbActivity } from '../../types/database';
+import type { TaskWithProgress } from '../../types/taskTypes';
 
 const TASK_FIELDS: FormField[] = [
   { name: 'name',             label: 'Task Name',   type: 'text',     placeholder: 'e.g. Solve 2D Word Problems', required: true },
@@ -44,126 +38,103 @@ const TASK_FIELDS: FormField[] = [
 
 export function TasksListPage() {
   const { topicId } = useParams<{ topicId: string }>();
+  const { user, isAdmin } = useAuth();
+  const { kids, subjects } = useData();
+  const { selectedChildId } = useSettingsStore();
+
+  const resolvedChildId = selectedChildId || (kids.length === 1 ? kids[0].id : null);
+  const childId = isAdmin ? (resolvedChildId || user?.id || '') : (user?.id || '');
+
+  const [topic, setTopic] = useState<DbTopic | null>(null);
+  const [topicLoading, setTopicLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [drawerTask, setDrawerTask] = useState<TaskWithProgress | null>(null);
+  const [activitiesMap, setActivitiesMap] = useState<Record<string, DbActivity[]>>({});
+  const [visibleCount, setVisibleCount] = useState(50);
   const navigate = useNavigate();
-  const toast = useToast();
-  const { user } = useAuth();
-  const { kids } = useData();
 
-  const [topic,   setTopic]   = useState<DbTopic | null>(null);
-  const [subject, setSubject] = useState<DbSubject | null>(null);
-  const [tasks,   setTasks]   = useState<DbTask[]>([]);
-  const [progressMap, setProgressMap] = useState<Record<string, SupabaseTaskProgress>>({});
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
-  const [search,  setSearch]  = useState('');
-  const debouncedSearch = useDebounce(search, 300);
-
-  const [modalOpen,     setModalOpen]     = useState(false);
-  const [editingTask,   setEditingTask]   = useState<DbTask | null>(null);
-  const [confirmId,     setConfirmId]     = useState<string | null>(null);
-  const [confirmLoading, setConfirmLoading] = useState(false);
-  const [visibleCount,  setVisibleCount]  = useState(50);
-  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
-  const [schedulingTaskId,  setSchedulingTaskId]  = useState<string | null>(null);
+  const {
+    filtered, loading, error,
+    search, setSearch,
+    toasts, addToast, load,
+    handleMarkPracticed, handleUpdateStage,
+    handleUpdateInterest, handleUpdateProgress, handleArchive,
+    handleUnarchive, handleToggleSchedule,
+  } = useTaskManagement(childId, 'all');
 
   useDocumentTitle(topic ? `${topic.title} · Tasks` : 'Tasks');
 
   useEffect(() => {
-    if (topicId) loadData();
+    if (topicId) {
+      setTopicLoading(true);
+      fetchTopicById(topicId)
+        .then(t => setTopic(t))
+        .catch(console.error)
+        .finally(() => setTopicLoading(false));
+    }
   }, [topicId]);
+
+  useEffect(() => {
+    async function fetchActivities() {
+      const taskIds = filtered.map(t => t.id);
+      if (taskIds.length === 0) return;
+
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('*')
+        .in('task_id', taskIds)
+        .eq('is_active', true)
+        .order('order_index', { ascending: true });
+        
+      if (acts) {
+        const actMap: Record<string, DbActivity[]> = {};
+        acts.forEach(a => {
+          if (!actMap[a.task_id]) actMap[a.task_id] = [];
+          actMap[a.task_id].push(a);
+        });
+        setActivitiesMap(actMap);
+      }
+    }
+    fetchActivities();
+  }, [filtered]);
 
   // Reset pagination on search
   useEffect(() => {
     setVisibleCount(50);
-  }, [debouncedSearch]);
+  }, [search]);
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      setError(null);
-      const [topicData, tasksData] = await Promise.all([
-        fetchTopicById(topicId!),
-        fetchTasksByTopic(topicId!),
-      ]);
-      setTopic(topicData);
-      setTasks(tasksData);
-
-      if (topicData?.subject_id) {
-        const subjectData = await fetchSubjectById(topicData.subject_id);
-        setSubject(subjectData);
-
-        if (subjectData?.child_id && tasksData.length > 0) {
-          const taskIds = tasksData.map((t) => t.id);
-          const { data: progData, error: progErr } = await supabase
-            .from('task_progress')
-            .select('*')
-            .in('task_id', taskIds)
-            .eq('child_id', subjectData.child_id);
-
-          if (!progErr && progData) {
-            const map: Record<string, SupabaseTaskProgress> = {};
-            progData.forEach((p) => { map[p.task_id] = p; });
-            setProgressMap(map);
-          }
-        }
-      }
-    } catch (err) {
-      setError((err as Error).message || 'Failed to load tasks.');
-    } finally {
-      setLoading(false);
+  async function handleCreateTask(data: any) {
+    if (isAdmin && !resolvedChildId) {
+      addToast('error', 'Please select a child before adding a task.');
+      return;
     }
-  }
 
-  async function handleSubmit(data: any) {
-    if (editingTask) {
-      const updated = await updateItem<DbTask>('tasks', editingTask.id, data);
-      setTasks(tasks.map(t => t.id === updated.id ? updated : t));
-      toast.success('Task updated successfully');
-    } else {
+    try {
       const created = await createItem<DbTask>('tasks', {
         ...data,
         topic_id:     topicId,
         is_active:    true,
-        order_index:  tasks.length,
+        order_index:  0,
         source_type:  'manual',
       });
       
-      // Auto-assign to child if available
-      const childId = kids.length > 0 ? kids[0].id : user?.id;
       if (childId) {
-        try {
-          await assignTaskToChild(created.id, childId);
-        } catch (err) {
-          console.error("Failed to assign task to child", err);
-        }
+        await assignTaskToChild(created.id, childId);
       }
       
-      setTasks([...tasks, created]);
-      toast.success('Task created!');
+      addToast('success', 'Task created!');
+      setIsAddModalOpen(false);
+      load(); // Refresh tasks
+    } catch (err) {
+      addToast('error', 'Failed to create task.');
     }
   }
 
-  async function handleConfirmDelete() {
-    if (!confirmId) return;
-    setConfirmLoading(true);
-    try {
-      await deleteItem('tasks', confirmId);
-      setTasks(tasks.filter(t => t.id !== confirmId));
-      toast.success('Task deleted');
-    } catch {
-      toast.error('Failed to delete task.');
-    } finally {
-      setConfirmLoading(false);
-      setConfirmId(null);
-    }
-  }
+  // Only show tasks for the current topic
+  const topicTasks = filtered.filter(t => t.topic_id === topicId);
+  const subjectName = topic ? subjects.find(s => s.id === topic.subject_id)?.name : undefined;
 
-  const filtered = tasks.filter(t =>
-    t.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    t.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
-
-  if (loading) return (
+  if (topicLoading || loading) return (
     <div className="space-y-6 animate-fade-in">
       <div className="h-5 w-64 bg-gray-100 rounded animate-pulse" />
       <SkeletonGrid count={6} />
@@ -178,7 +149,7 @@ export function TasksListPage() {
       <h3 className="text-base font-bold text-gray-800 mb-2">Failed to load tasks</h3>
       <p className="text-sm text-gray-400 mb-4">{error}</p>
       <button
-        onClick={loadData}
+        onClick={load}
         className="px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors"
       >
         Try Again
@@ -196,7 +167,7 @@ export function TasksListPage() {
         <div>
           <h1 className="text-2xl font-black text-gray-900">{topic?.title || 'Tasks'}</h1>
           <p className="text-sm text-gray-400">
-            {tasks.length} task{tasks.length !== 1 ? 's' : ''} in this topic
+            {topicTasks.length} task{topicTasks.length !== 1 ? 's' : ''} in this topic
           </p>
         </div>
 
@@ -213,49 +184,73 @@ export function TasksListPage() {
         </div>
       </div>
 
-      {tasks.length === 0 ? (
+      {topicTasks.length === 0 && !search ? (
         <EmptyState
           icon={CheckSquare}
           title="No tasks in this topic"
           description="Create specific tasks to start tracking learning progress."
           actionLabel="Add Task"
-          onAction={() => setModalOpen(true)}
+          onAction={() => setIsAddModalOpen(true)}
+        />
+      ) : topicTasks.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="No matching tasks"
+          description="Try a different search term."
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.slice(0, visibleCount).map((task) => {
-              const prog = progressMap[task.id];
-              const targetCount = prog?.target_count ?? 5;
-              const learnedCount = prog?.learned_count ?? 0;
-              const progressPct = Math.min(100, Math.round((learnedCount / targetCount) * 100));
-
-              return (
-                <HierarchicalCard
-                  key={task.id}
-                  title={task.name}
-                  subtitle={task.difficulty_level || undefined}
-                  description={task.description || undefined}
-                  icon={<CheckSquare size={20} />}
-                  progress={prog ? progressPct : undefined}
-                  footerItems={[
-                    { label: 'Stage', value: prog?.learning_stage?.replace('_', ' ') || 'Not Started', icon: <BrainCircuit size={12} /> },
-                    { label: 'Count', value: `${learnedCount} / ${targetCount}`, icon: <Target size={12} /> },
-                    { label: 'Interest', value: `${prog?.interest_level ?? 3} / 5`, icon: <Star size={12} /> },
-                    { label: 'This Week', value: prog?.is_scheduled_this_week ? 'Yes' : 'No', icon: <CalendarDays size={12} /> },
-                  ]}
-                  onEdit={() => { setEditingTask(task); setModalOpen(true); }}
-                  onDelete={() => setConfirmId(task.id)}
-                  onSchedule={() => {
-                    setSchedulingTaskId(task.id);
-                    setScheduleModalOpen(true);
-                  }}
-                  onClick={() => navigate(`/tasks/${task.id}/activities`)}
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {topicTasks.slice(0, visibleCount).map((task) => (
+              <StaggerItem key={task.id}>
+                <TaskCard
+                  task={task}
+                  onMarkPracticed={handleMarkPracticed}
+                  onUpdateStage={handleUpdateStage}
+                  onUpdateInterest={handleUpdateInterest}
+                  onToggleSchedule={handleToggleSchedule}
+                  onArchive={handleArchive}
+                  onUnarchive={handleUnarchive}
+                  onOpenDetails={(t) => setDrawerTask(t)}
+                  subjectName={subjectName}
+                  expandableContent={
+                    <div className="space-y-2">
+                      {(!activitiesMap[task.id] || activitiesMap[task.id].length === 0) ? (
+                        <p className="text-xs text-gray-400 text-center py-2">No activities yet.</p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {activitiesMap[task.id].slice(0, 5).map(act => (
+                            <li
+                              key={act.id}
+                              className="flex items-center gap-2 text-xs text-gray-600 p-1.5 hover:bg-violet-50 hover:text-violet-700 rounded-md cursor-pointer transition-colors"
+                              onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                            >
+                              <Zap size={12} className="text-violet-400 flex-shrink-0" />
+                              <span className="truncate flex-1 font-medium">{act.name}</span>
+                              {act.type && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 rounded">{act.type}</span>}
+                            </li>
+                          ))}
+                          {activitiesMap[task.id].length > 5 && (
+                            <li className="text-center text-[10px] text-gray-400 pt-1">
+                              + {activitiesMap[task.id].length - 5} more activities
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                      <button
+                        onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                        className="w-full text-center text-[11px] font-bold text-violet-600 hover:text-violet-700 py-1"
+                      >
+                        Manage Activities
+                      </button>
+                    </div>
+                  }
                 />
-              );
-            })}
-          </div>
-          {visibleCount < filtered.length && (
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+          
+          {visibleCount < topicTasks.length && (
             <div className="flex justify-center mt-8">
               <button
                 onClick={() => setVisibleCount(v => v + 50)}
@@ -269,45 +264,29 @@ export function TasksListPage() {
       )}
 
       <FloatingAddButton
-        onClick={() => { setEditingTask(null); setModalOpen(true); }}
+        onClick={() => setIsAddModalOpen(true)}
         label="Add Task"
       />
 
       <CurriculumFormModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditingTask(null); }}
-        title={editingTask ? 'Edit Task' : 'Add Task'}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Task"
         fields={TASK_FIELDS}
-        initialData={editingTask}
-        onSubmit={handleSubmit}
+        onSubmit={handleCreateTask}
       />
 
-      <ConfirmModal
-        isOpen={!!confirmId}
-        onClose={() => setConfirmId(null)}
-        onConfirm={handleConfirmDelete}
-        loading={confirmLoading}
-        title="Delete Task?"
-        message="This will permanently delete this task and all associated progress data."
-        confirmLabel="Delete Task"
-        danger
-      />
-
-      {scheduleModalOpen && schedulingTaskId && subject?.child_id && (
-        <TaskScheduleModal
-          isOpen={scheduleModalOpen}
-          onClose={() => {
-            setScheduleModalOpen(false);
-            setSchedulingTaskId(null);
-            loadData(); // reload to refresh progress & schedule indicators
-          }}
-          taskId={schedulingTaskId}
-          childId={subject.child_id}
-          onSaved={() => {
-            toast.success('Task scheduling updated!');
-          }}
+      {/* ── Details Drawer ──────────────────────────────────── */}
+      {drawerTask && (
+        <TaskDetailsDrawer
+          task={drawerTask}
+          onClose={() => setDrawerTask(null)}
+          onUpdateProgress={handleUpdateProgress}
         />
       )}
+
+      {/* ── Toast Notifications ─────────────────────────────── */}
+      <TaskToastContainer toasts={toasts} />
     </div>
   );
 }

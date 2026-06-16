@@ -132,6 +132,7 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
           }
         : t.progress,
       progressPercent: Math.min(100, Math.round((newLearnedCount / targetCount) * 100)),
+      isPracticedToday: true,
     }));
 
     try {
@@ -310,7 +311,10 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
         case 'next_due_at': {
           const aDate = a.progress?.next_due_at ?? '';
           const bDate = b.progress?.next_due_at ?? '';
-          return aDate.localeCompare(bDate);
+          if (!aDate && !bDate) return 0;
+          if (!aDate) return 1; // Empty dates go to the bottom
+          if (!bDate) return -1;
+          return bDate.localeCompare(aDate); // Descending order
         }
         case 'progress':
           return b.progressPercent - a.progressPercent;

@@ -25,10 +25,10 @@ import { StaggerContainer, StaggerItem, ScaleOnHover, AnimatedCounter } from '..
 
 /* ─── Stat Card ─────────────────────────────────────────────── */
 function StatCard({
-  label, value, icon: Icon, iconBg, iconColor, sub,
+  label, value, icon: Icon, iconGradient, sub,
 }: {
   label: string; value: string | number;
-  icon: React.ElementType; iconBg: string; iconColor: string; sub?: string;
+  icon: React.ElementType; iconGradient: string; sub?: string;
 }) {
   const numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
   const isNumeric = !isNaN(numericValue) && typeof value !== 'string';
@@ -37,8 +37,8 @@ function StatCard({
 
   return (
     <div className="bg-white rounded-2xl shadow-card p-5 flex items-center gap-4 border border-gray-100/80 hover:shadow-card-hover transition-shadow duration-300">
-      <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-        <Icon size={22} className={iconColor} />
+      <div className={`w-12 h-12 bg-gradient-to-br ${iconGradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-md`}>
+        <Icon size={22} className="text-white" />
       </div>
       <div>
         <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>
@@ -61,9 +61,9 @@ function SectionHeader({ title, actionLabel, onAction }: {
 }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-base font-bold text-gray-900">{title}</h2>
+      <h2 className="text-base font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">{title}</h2>
       {actionLabel && (
-        <button onClick={onAction} className="text-xs text-violet-600 font-semibold hover:text-violet-800 transition-colors">
+        <button onClick={onAction} className="text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
           {actionLabel} →
         </button>
       )}
@@ -169,14 +169,14 @@ export function DashboardPage() {
       <StaggerContainer className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
         {isAdmin && kids.length > 1 && (
           <StaggerItem>
-            <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconBg="bg-violet-50" iconColor="text-violet-600" sub="Enrolled learners" />
+            <StatCard label="Total Kids"   value={kids.length}       icon={Users}        iconGradient="from-violet-400 to-purple-600" sub="Enrolled learners" />
           </StaggerItem>
         )}
         <StaggerItem>
-          <StatCard label="Topics Done"  value={`${completedTopics}/${topics.length}`} icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" sub="Topics completed" />
+          <StatCard label="Topics Done"  value={`${completedTopics}/${topics.length}`} icon={CheckCircle2} iconGradient="from-emerald-400 to-teal-500" sub="Topics completed" />
         </StaggerItem>
         <StaggerItem>
-          <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp}   iconBg="bg-amber-50"  iconColor="text-amber-600"  sub="Across subjects" />
+          <StatCard label="Avg Progress" value={`${avgProgress}%`} icon={TrendingUp}   iconGradient="from-amber-400 to-orange-500" sub="Across subjects" />
         </StaggerItem>
       </StaggerContainer>
 
@@ -248,15 +248,15 @@ export function DashboardPage() {
             <SectionHeader title={isAdmin ? "Student Stats" : "My Stats"} />
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: GraduationCap, label: 'Subjects',   value: subjects.length,                         color: 'text-violet-600', bg: 'bg-violet-50' },
-                { icon: CheckCircle2,  label: 'Completed',  value: completedTopics,                         color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { icon: ListChecks,    label: 'Topics',     value: topics.length,                           color: 'text-blue-600',   bg: 'bg-blue-50' },
-                { icon: Zap,           label: 'Scheduled',  value: scheduledTasks,                         color: 'text-amber-600',  bg: 'bg-amber-50' },
-              ].map(({ icon: Icon, label, value, color, bg }) => (
-                <div key={label} className={`${bg} rounded-xl p-4 text-center`}>
-                  <Icon size={20} className={`${color} mx-auto mb-2`} />
-                  <p className={`text-xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500">{label}</p>
+                { icon: GraduationCap, label: 'Subjects',   value: subjects.length,  gradient: 'from-violet-400 to-purple-500' },
+                { icon: CheckCircle2,  label: 'Completed',  value: completedTopics,  gradient: 'from-emerald-400 to-teal-500' },
+                { icon: ListChecks,    label: 'Topics',     value: topics.length,    gradient: 'from-blue-400 to-cyan-500' },
+                { icon: Zap,           label: 'Scheduled',  value: scheduledTasks,   gradient: 'from-amber-400 to-orange-500' },
+              ].map(({ icon: Icon, label, value, gradient }) => (
+                <div key={label} className={`bg-gradient-to-br ${gradient} rounded-xl p-4 text-center shadow-md`}>
+                  <Icon size={20} className="text-white mx-auto mb-2" />
+                  <p className="text-xl font-bold text-white">{value}</p>
+                  <p className="text-xs text-white/80">{label}</p>
                 </div>
               ))}
             </div>
@@ -309,14 +309,14 @@ export function DashboardPage() {
       {/* ── Empty state when DB has no records ─────────────── */}
       {isEmpty && (
         <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-8 text-center">
-          <div className="text-4xl mb-4">🏫</div>
+          <div className="w-14 h-14 bg-gradient-to-br from-violet-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">🏫</div>
           <h3 className="text-base font-bold text-gray-800 mb-2">Your homeschool is empty!</h3>
-          <p className="text-sm text-gray-400 mb-4 max-w-sm mx-auto">
+          <p className="text-sm text-gray-400 mb-5 max-w-sm mx-auto">
             Add your first child, then create subjects and topics to get started.
           </p>
           <button
             onClick={() => navigate('/kids')}
-            className="px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors"
+            className="btn-gradient px-5 py-2.5 text-sm"
           >
             Add First Child
           </button>

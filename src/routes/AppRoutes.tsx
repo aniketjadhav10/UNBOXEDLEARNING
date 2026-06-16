@@ -24,6 +24,7 @@ import { TasksListPage } from '../pages/new/TasksListPage';
 import { ActivitiesListPage } from '../pages/new/ActivitiesListPage';
 import { ThisWeekPage } from '../pages/new/ThisWeekPage';
 import { FamilyPage } from '../pages/admin/Family/FamilyPage';
+import { EmailLogsPage } from '../pages/admin/EmailLogsPage';
 
 // ── Full-screen loading while resolving Supabase session ──────
 function SessionLoader() {
@@ -92,6 +93,7 @@ export function AppRoutes() {
         <Route path="this-week" element={<ThisWeekPage />} />
         <Route path="reports" element={<AdminRoute><ReportsPage /></AdminRoute>} />
         <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+        <Route path="system/emails" element={<AdminRoute><EmailLogsPage /></AdminRoute>} />
         <Route path="family" element={<AdminRoute><FamilyPage /></AdminRoute>} />
 
         {/* Student-only */}

@@ -125,7 +125,7 @@ button, input, select, textarea {
   background-clip: text;
 }
 
-/* ─── Reduced Motion ────────────────────────────────────────── */
+/* ─── Reduced Motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -134,3 +134,97 @@ button, input, select, textarea {
   }
 }
 
+/* ─── Gradient Button ────────────────────────────────────────────── */
+.btn-gradient {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+}
+.btn-gradient:hover {
+  opacity: 0.9;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+}
+.btn-gradient:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─── Card Glow ──────────────────────────────────────────────────── */
+.card-glow {
+  border: 1px solid transparent;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-image:
+    linear-gradient(white, white),
+    linear-gradient(135deg, #c4b5fd 0%, #818cf8 100%);
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.10);
+  transition: box-shadow 0.25s ease;
+}
+.card-glow:hover {
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.18);
+}
+
+/* ─── Stat Card Gradient Backgrounds ────────────────────────────── */
+.stat-card-violet { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); }
+.stat-card-emerald { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); }
+.stat-card-amber { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); }
+.stat-card-blue { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
+.stat-card-pink { background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); }
+
+/* ─── Badge Utilities ────────────────────────────────────────────── */
+.badge-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+.badge-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.badge-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+/* ─── Fade In Animation ──────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+/* ─── Shadow Tokens ──────────────────────────────────────────────── */
+.shadow-card       { box-shadow: 0 1px 8px rgba(99, 102, 241, 0.06), 0 2px 4px rgba(0,0,0,0.04); }
+.shadow-card-hover { box-shadow: 0 4px 20px rgba(99, 102, 241, 0.12), 0 2px 8px rgba(0,0,0,0.06); }
+.shadow-sidebar    { box-shadow: 4px 0 24px rgba(30, 27, 75, 0.20); }

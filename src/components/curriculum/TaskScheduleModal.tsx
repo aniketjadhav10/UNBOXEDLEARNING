@@ -16,9 +16,9 @@ const LEARNING_STAGES = [
   { value: 'Not_Started', label: 'Not Started', color: 'text-gray-500 bg-gray-100' },
   { value: 'Introduced', label: 'Introduced', color: 'text-cyan-600 bg-cyan-50' },
   { value: 'Practicing', label: 'Practicing', color: 'text-indigo-600 bg-indigo-50' },
-  { value: 'Needs_Practice', label: 'Needs Practice', color: 'text-amber-600 bg-amber-50' },
   { value: 'Comfortable', label: 'Comfortable', color: 'text-blue-600 bg-blue-50' },
-  { value: 'Confident', label: 'Confident (Mastered)', color: 'text-emerald-600 bg-emerald-50' }
+  { value: 'Confident', label: 'Confident (Mastered)', color: 'text-emerald-600 bg-emerald-50' },
+  { value: 'Needs_Practice', label: 'Needs Practice', color: 'text-amber-600 bg-amber-50' }
 ];
 
 export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }: TaskScheduleModalProps) {

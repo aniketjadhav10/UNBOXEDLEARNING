@@ -37,11 +37,11 @@ export function TaskQuickActions({
       <button
         id={`practice-${task.id}`}
         onClick={() => onMarkPracticed(task)}
-        disabled={isNotStarted || isFullyMastered}
+        disabled={isNotStarted || isFullyMastered || task.isPracticedToday}
         className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
       >
         <Plus size={12} />
-        Practiced
+        {task.isPracticedToday ? 'Practiced Today' : 'Practiced'}
       </button>
 
       {/* Stage dropdown */}

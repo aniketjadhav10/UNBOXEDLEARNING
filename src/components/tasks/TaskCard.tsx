@@ -1,7 +1,7 @@
 // ============================================================
 // TaskCard — Main card component for a task with progress
 // ============================================================
-import { Calendar, Clock, Repeat, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
@@ -20,6 +20,7 @@ interface TaskCardProps {
   onOpenDetails: (task: TaskWithProgress) => void;
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
+  expandableContent?: React.ReactNode;
 }
 
 function formatDate(iso?: string | null): string {
@@ -41,6 +42,18 @@ function formatLastPracticed(iso?: string | null): string {
   return `${diff}d ago`;
 }
 
+function getStageProgressData(stage: string | undefined | null) {
+  const normalized = stage || 'Not_Started';
+  switch(normalized) {
+    case 'Introduced': return { current: 1, total: 5, colorClass: 'bg-blue-400' };
+    case 'Practicing': return { current: 2, total: 5, colorClass: 'bg-violet-400' };
+    case 'Needs_Practice': return { current: 2, total: 5, colorClass: 'bg-red-400' };
+    case 'Comfortable': return { current: 4, total: 5, colorClass: 'bg-amber-400' };
+    case 'Confident': return { current: 5, total: 5, colorClass: 'bg-emerald-400' };
+    default: return { current: 0, total: 5, colorClass: 'bg-gray-200' };
+  }
+}
+
 export function TaskCard({
   task,
   onMarkPracticed,
@@ -51,8 +64,10 @@ export function TaskCard({
   onOpenDetails,
   onToggleSchedule,
   subjectName,
+  expandableContent,
 }: TaskCardProps) {
   const { progress } = task;
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Card border accent based on urgency
   const borderAccent = task.isOverdue
@@ -185,9 +200,40 @@ export function TaskCard({
         />
       </div>
 
-      {/* ── EXPANDED DETAILS (inline) ────────────────────────── */}
-      {/* ── EXPANDED DETAILS ─────────────────────────────────── */}
-      {/* (Details now open in Drawer via onOpenDetails) */}
+      {/* ── Bottom Segmented Progress Bar ── */}
+      <div className="flex h-1.5 w-full gap-0.5 mt-auto bg-white">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const progData = getStageProgressData(progress?.learning_stage);
+          return (
+            <div
+              key={i}
+              className={`h-full flex-1 ${
+                i < progData.current ? progData.colorClass : 'bg-gray-100'
+              }`}
+            />
+          );
+        })}
+      </div>
+
+      {/* ── Expand Button ── */}
+      {expandableContent && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="w-full flex items-center justify-center py-1.5 bg-gray-50/50 hover:bg-violet-50/50 text-gray-400 hover:text-violet-600 border-t border-gray-50 transition-colors"
+        >
+          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+      )}
+
+      {/* ── Expanded Content ── */}
+      {expandableContent && isExpanded && (
+        <div className="px-4 py-3 border-t border-gray-50 bg-gray-50/30 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          {expandableContent}
+        </div>
+      )}
     </article>
   );
 }

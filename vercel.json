@@ -4,10 +4,18 @@
       "runtime": "@vercel/node@3.2.20"
     }
   },
-  "rewrites": [
+  "crons": [
     {
-      "source": "/((?!api/.*).*)",
-      "destination": "/index.html"
+      "path": "/api/cron/daily-agenda",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/evening-report",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 18 * * 0"
     }
   ]
 }

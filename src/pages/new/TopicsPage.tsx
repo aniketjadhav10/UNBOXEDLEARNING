@@ -2,7 +2,7 @@
 // TopicsPage — Production-ready with real progress, ConfirmModal,
 // toast, debounced search, and document title
 // ============================================================
-import { Layers, Search, BarChart2, CheckCircle2 } from 'lucide-react';
+import { Layers, Search, BarChart2, CheckCircle2, CalendarDays } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
@@ -230,6 +230,18 @@ export function TopicsPage() {
               const difficulty = normalizeDifficulty(topic.difficulty_level);
               const parentSubject = rawSubjects.find(s => s.id === topic.subject_id);
               const subtitle = subject ? undefined : (parentSubject?.name || undefined);
+              
+              const hasScheduledTasks = rawTasks.some(tk => 
+                tk.topic_id === topic.id && 
+                taskProgress.some(p => p.task_id === tk.id && p.is_scheduled_this_week)
+              );
+              const notStartedCount = rawTasks.filter(tk => 
+                tk.topic_id === topic.id &&
+                (!taskProgress.find(p => p.task_id === tk.id) || taskProgress.find(p => p.task_id === tk.id)?.learning_stage === 'Not_Started')
+              ).length;
+
+              const highlight = stats.completed ? 'completed' : (hasScheduledTasks ? 'scheduled' : 'default');
+
               return (
                 <HierarchicalCard
                   key={topic.id}
@@ -237,15 +249,25 @@ export function TopicsPage() {
                   subtitle={subtitle}
                   description={topic.description || undefined}
                   icon={<Layers size={20} />}
+                  statusHighlight={highlight}
                   badge={
-                    stats.completed
-                      ? <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-bold flex items-center gap-1"><CheckCircle2 size={10} /> Done</span>
-                      : <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${DIFFICULTY_BADGE[difficulty] ?? 'bg-gray-100 text-gray-600'}`}>{difficulty}</span>
+                    <div className="flex gap-1.5">
+                      {hasScheduledTasks && !stats.completed && (
+                        <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold flex items-center gap-1 shadow-sm">
+                          <CalendarDays size={10} /> Scheduled
+                        </span>
+                      )}
+                      {stats.completed
+                        ? <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-bold flex items-center gap-1 shadow-sm"><CheckCircle2 size={10} /> Done</span>
+                        : <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${DIFFICULTY_BADGE[difficulty] ?? 'bg-gray-100 text-gray-600'}`}>{difficulty}</span>
+                      }
+                    </div>
                   }
                   progress={stats.progress}
                   footerItems={[
-                    { label: 'Tasks',    value: stats.tasksCount,                          icon: <BarChart2 size={12} /> },
-                    { label: 'Progress', value: `${stats.progress}%` },
+                    { label: 'Tasks', value: stats.tasksCount, icon: <Layers size={12} /> },
+                    { label: 'Not Started', value: <span className="text-gray-500 font-bold">{notStartedCount}</span>, icon: <span className="text-[10px]">⏳</span> },
+                    { label: 'Completion', value: `${stats.progress}%`, icon: <BarChart2 size={12} /> }
                   ]}
                   onEdit={() => { setEditingTopic(topic); setModalOpen(true); }}
                   onDelete={() => setConfirmId(topic.id)}

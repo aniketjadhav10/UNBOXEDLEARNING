@@ -6,8 +6,8 @@ if (!env.supabaseUrl || !env.supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-  env.supabaseUrl ?? 'https://example.supabase.co',
-  env.supabaseAnonKey ?? 'missing-anon-key',
+  env.supabaseUrl || 'https://example.supabase.co',
+  env.supabaseAnonKey || 'missing-anon-key',
   {
   auth: {
     persistSession: true,

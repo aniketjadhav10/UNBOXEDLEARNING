@@ -11,6 +11,7 @@ import {
   Home,
   ListChecks,
   LogOut,
+  Mail,
   Settings,
   Star,
   TrendingUp,
@@ -42,6 +43,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Archived', path: '/archived', icon: Archive },
   { label: 'Family', path: '/family', icon: Heart },
   { label: 'Kids', path: '/kids', icon: Users },
+  { label: 'System Logs', path: '/system/emails', icon: Mail },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
@@ -147,8 +149,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 [
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   isActive
-                    ? 'bg-white/15 text-white shadow-sm'
-                    : 'text-violet-200 hover:bg-white/10 hover:text-white',
+                    ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
+                    : 'text-violet-200 hover:bg-white/10 hover:text-white border border-transparent',
                 ].join(' ')
               }
             >
@@ -158,7 +160,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span
                     className={[
                       'w-0.5 h-4 rounded-full transition-all duration-200 flex-shrink-0',
-                      isActive ? 'bg-violet-300' : 'bg-transparent',
+                      isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
                     ].join(' ')}
                   />
                   <item.icon size={17} />

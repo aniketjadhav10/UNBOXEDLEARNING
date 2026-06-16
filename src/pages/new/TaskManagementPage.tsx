@@ -8,8 +8,10 @@ import {
   Moon,
   RefreshCw,
   Sun,
+  Zap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
 import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
@@ -22,7 +24,8 @@ import { useData } from '../../context/DataContext';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { createItem } from '../../services/curriculumService';
 import { assignTaskToChild } from '../../services/taskService';
-import type { DbTask } from '../../types/database';
+import { supabase } from '../../services/supabase';
+import type { DbTask, DbActivity } from '../../types/database';
 
 // ── Tab config ──────────────────────────────────────────────
 const TABS = [
@@ -58,6 +61,7 @@ function EmptyTaskState({ tab }: { tab: TabKey }) {
 
 // ── Main page ────────────────────────────────────────────────
 export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey }) {
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const { selectedChildId } = useSettingsStore();
   const { subjects, topics, kids } = useData(); // Get subjects and topics for the form
@@ -78,8 +82,33 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
   } = useTaskManagement(childId, defaultTab);
 
   const [drawerTask, setDrawerTask] = useState<TaskWithProgress | null>(null);
+  const [activitiesMap, setActivitiesMap] = useState<Record<string, DbActivity[]>>({});
   const [visibleCount, setVisibleCount] = useState(50);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchActivities() {
+      const taskIds = filtered.map(t => t.id);
+      if (taskIds.length === 0) return;
+
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('*')
+        .in('task_id', taskIds)
+        .eq('is_active', true)
+        .order('order_index', { ascending: true });
+        
+      if (acts) {
+        const actMap: Record<string, DbActivity[]> = {};
+        acts.forEach(a => {
+          if (!actMap[a.task_id]) actMap[a.task_id] = [];
+          actMap[a.task_id].push(a);
+        });
+        setActivitiesMap(actMap);
+      }
+    }
+    fetchActivities();
+  }, [filtered]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -267,6 +296,38 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
                     onUnarchive={handleUnarchive}
                     onOpenDetails={(t) => setDrawerTask(t)}
                     subjectName={subjectName}
+                    expandableContent={
+                      <div className="space-y-2">
+                        {(!activitiesMap[task.id] || activitiesMap[task.id].length === 0) ? (
+                          <p className="text-xs text-gray-400 text-center py-2">No activities yet.</p>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {activitiesMap[task.id].slice(0, 5).map(act => (
+                              <li
+                                key={act.id}
+                                className="flex items-center gap-2 text-xs text-gray-600 p-1.5 hover:bg-violet-50 hover:text-violet-700 rounded-md cursor-pointer transition-colors"
+                                onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                              >
+                                <Zap size={12} className="text-violet-400 flex-shrink-0" />
+                                <span className="truncate flex-1 font-medium">{act.name}</span>
+                                {act.type && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 rounded">{act.type}</span>}
+                              </li>
+                            ))}
+                            {activitiesMap[task.id].length > 5 && (
+                              <li className="text-center text-[10px] text-gray-400 pt-1">
+                                + {activitiesMap[task.id].length - 5} more activities
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                        <button
+                          onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                          className="w-full text-center text-[11px] font-bold text-violet-600 hover:text-violet-700 py-1"
+                        >
+                          Manage Activities
+                        </button>
+                      </div>
+                    }
                   />
                 );
               })}

@@ -1,138 +1,72 @@
 // ============================================================
 // ThisWeekPage — Shows all tasks marked as "scheduled this week"
 // ============================================================
-import { CalendarCheck, Search, BrainCircuit, Target, Star, RefreshCw, AlertTriangle } from 'lucide-react';
+import { CalendarCheck, Search, RefreshCw, AlertTriangle, Zap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
-import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
-import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { useDebounce } from '../../hooks/useDebounce';
-import { supabase } from '../../services/supabase';
 import { StaggerContainer, StaggerItem } from '../../components/motion/MotionWrappers';
-import { useToast } from '../../store/useToastStore';
-import type { SupabaseTaskProgress, LearningStage } from '../../types/taskTypes';
-import type { DbTask, DbTopic, DbSubject } from '../../types/database';
 
-interface WeekTask {
-  task: DbTask;
-  topic: DbTopic | null;
-  subject: DbSubject | null;
-  progress: SupabaseTaskProgress;
-}
+import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
+import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
+import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
+import { useTaskManagement } from '../../hooks/useTaskManagement';
+import { supabase } from '../../services/supabase';
+import type { TaskWithProgress } from '../../types/taskTypes';
+import type { DbActivity } from '../../types/database';
 
 export function ThisWeekPage() {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { kids, rawTopics, rawSubjects } = useData();
+  const { kids, subjects, topics } = useData();
   const { selectedChildId } = useSettingsStore();
 
   const resolvedChildId = selectedChildId || (kids.length === 1 ? kids[0].id : null);
   const childId = isAdmin ? (resolvedChildId || user?.id || '') : (user?.id || '');
 
-  const [weekTasks, setWeekTasks] = useState<WeekTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
-  const toast = useToast();
+  const {
+    filtered, loading, error,
+    search, setSearch,
+    toasts, load,
+    handleMarkPracticed, handleUpdateStage,
+    handleUpdateInterest, handleUpdateProgress, handleArchive,
+    handleUnarchive, handleToggleSchedule,
+  } = useTaskManagement(childId, 'scheduled');
 
-  useDocumentTitle('This Week');
+  const [drawerTask, setDrawerTask] = useState<TaskWithProgress | null>(null);
+  const [activitiesMap, setActivitiesMap] = useState<Record<string, DbActivity[]>>({});
+  const [weekTab, setWeekTab] = useState<'pending' | 'learned_today'>('pending');
 
   useEffect(() => {
-    if (childId) loadThisWeek();
-  }, [childId]);
+    async function fetchActivities() {
+      const taskIds = filtered.map(t => t.id);
+      if (taskIds.length === 0) return;
 
-  async function loadThisWeek() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // 1. Get all progress records marked as scheduled this week
-      const { data: progData, error: progErr } = await supabase
-        .from('task_progress')
+      const { data: acts } = await supabase
+        .from('activities')
         .select('*')
-        .eq('child_id', childId)
-        .eq('is_scheduled_this_week', true)
-        .eq('is_active', true);
-
-      if (progErr) throw new Error(progErr.message);
-      if (!progData || progData.length === 0) {
-        setWeekTasks([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Fetch the tasks
-      const taskIds = progData.map(p => p.task_id);
-      const { data: tasksData, error: taskErr } = await supabase
-        .from('tasks')
-        .select('*')
-        .in('id', taskIds)
-        .eq('is_active', true);
-
-      if (taskErr) throw new Error(taskErr.message);
-
-      // 3. Build the combined list
-      const taskMap = new Map((tasksData ?? []).map(t => [t.id, t]));
-      const topicMap = new Map(rawTopics.map(t => [t.id, t]));
-      const subjectMap = new Map(rawSubjects.map(s => [s.id, s]));
-
-      const combined: WeekTask[] = progData
-        .filter(p => taskMap.has(p.task_id))
-        .map(p => {
-          const task = taskMap.get(p.task_id)!;
-          const topic = topicMap.get(task.topic_id) ?? null;
-          const subject = topic ? (subjectMap.get(topic.subject_id) ?? null) : null;
-          return { task, topic, subject, progress: p };
+        .in('task_id', taskIds)
+        .eq('is_active', true)
+        .order('order_index', { ascending: true });
+        
+      if (acts) {
+        const actMap: Record<string, DbActivity[]> = {};
+        acts.forEach(a => {
+          if (!actMap[a.task_id]) actMap[a.task_id] = [];
+          actMap[a.task_id].push(a);
         });
-
-      setWeekTasks(combined);
-    } catch (err) {
-      setError((err as Error).message || 'Failed to load this week\'s tasks.');
-    } finally {
-      setLoading(false);
+        setActivitiesMap(actMap);
+      }
     }
-  }
+    fetchActivities();
+  }, [filtered]);
 
-  async function handleStageChange(progressId: string, newStage: LearningStage) {
-    try {
-      const { error: updateErr } = await supabase
-        .from('task_progress')
-        .update({ learning_stage: newStage })
-        .eq('id', progressId);
-
-      if (updateErr) throw new Error(updateErr.message);
-
-      // Update local state
-      setWeekTasks(prev => prev.map(wt => 
-        wt.progress.id === progressId 
-          ? { ...wt, progress: { ...wt.progress, learning_stage: newStage } } 
-          : wt
-      ));
-      toast.success('Learning stage updated');
-    } catch (err) {
-      toast.error('Failed to update stage');
-    }
-  }
-
-  const filtered = weekTasks.filter(wt =>
-    wt.task.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    wt.subject?.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    wt.topic?.title.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
-
-  if (loading) return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="h-5 w-64 skeleton-shimmer rounded" />
-      <SkeletonGrid count={6} />
-    </div>
-  );
+  useDocumentTitle('This Week');
 
   if (error) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -142,7 +76,7 @@ export function ThisWeekPage() {
       <h3 className="text-base font-bold text-gray-800 mb-2">Failed to load</h3>
       <p className="text-sm text-gray-400 mb-4">{error}</p>
       <button
-        onClick={loadThisWeek}
+        onClick={load}
         className="px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors"
       >
         Try Again
@@ -182,7 +116,7 @@ export function ThisWeekPage() {
             />
           </div>
           <button
-            onClick={loadThisWeek}
+            onClick={load}
             className="p-2.5 bg-white border border-gray-200 text-gray-400 hover:text-violet-600 rounded-xl transition-colors flex-shrink-0"
             aria-label="Refresh"
           >
@@ -191,85 +125,121 @@ export function ThisWeekPage() {
         </div>
       </div>
 
-      {weekTasks.length === 0 ? (
+      {/* ── Tabs ─────────────────────────────────────────────── */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl mb-6">
+        <button
+          onClick={() => setWeekTab('pending')}
+          className={[
+            'flex-1 py-2 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200',
+            weekTab === 'pending'
+              ? 'bg-white text-violet-700 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700',
+          ].join(' ')}
+        >
+          Pending ({filtered.filter(t => !t.isPracticedToday).length})
+        </button>
+        <button
+          onClick={() => setWeekTab('learned_today')}
+          className={[
+            'flex-1 py-2 px-3 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200',
+            weekTab === 'learned_today'
+              ? 'bg-white text-violet-700 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700',
+          ].join(' ')}
+        >
+          Learned Today ({filtered.filter(t => t.isPracticedToday).length})
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => <TaskCardSkeleton key={i} />)}
+        </div>
+      ) : filtered.length === 0 && !search ? (
         <EmptyState
           icon={CalendarCheck}
           title="No tasks scheduled this week"
           description="Mark tasks as 'Scheduled This Week' from the task schedule dialog to see them here."
         />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No matching tasks"
-          description="Try a different search term."
-        />
-      ) : (
-        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((wt) => {
-            const { task, topic, subject, progress: prog } = wt;
-            const targetCount = prog.target_count ?? 5;
-            const learnedCount = prog.learned_count ?? 0;
-            const progressPct = Math.min(100, Math.round((learnedCount / targetCount) * 100));
-
-            const currentStage = prog.learning_stage || 'Not_Started';
-            const stageStyles: Record<string, string> = {
-              Not_Started: 'bg-gray-50 text-gray-500 border-gray-200/60 hover:bg-gray-100/80',
-              Introduced: 'bg-blue-50/70 text-blue-700 border-blue-200/50 hover:bg-blue-100/60',
-              Practicing: 'bg-violet-50/70 text-violet-700 border-violet-200/50 hover:bg-violet-100/60',
-              Comfortable: 'bg-amber-50/70 text-amber-700 border-amber-200/50 hover:bg-amber-100/60',
-              Confident: 'bg-emerald-50/70 text-emerald-700 border-emerald-200/50 hover:bg-emerald-100/60',
-              Needs_Practice: 'bg-red-50/70 text-red-700 border-red-200/50 hover:bg-red-100/60',
-            };
-            const currentStyle = stageStyles[currentStage] || stageStyles.Not_Started;
-
+      ) : (() => {
+        const displayedTasks = filtered.filter(t => weekTab === 'learned_today' ? t.isPracticedToday : !t.isPracticedToday);
+        if (displayedTasks.length === 0) {
+          return (
+            <EmptyState
+              icon={Search}
+              title={weekTab === 'learned_today' ? "No tasks learned today" : "No pending tasks!"}
+              description={weekTab === 'learned_today' ? "Complete some pending tasks to see them here." : "Great job! You've learned all tasks for today."}
+            />
+          );
+        }
+        return (
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {displayedTasks.map((task) => {
+              const topic = topics.find(t => t.id === task.topic_id);
+            const subjectName = subjects.find(s => s.id === topic?.subject_id)?.name;
             return (
               <StaggerItem key={task.id}>
-                <HierarchicalCard
-                  title={task.name}
-                  subtitle={subject?.name ? `${subject.name} › ${topic?.title ?? ''}` : (topic?.title || undefined)}
-                  description={task.description || undefined}
-                  icon={<CalendarCheck size={20} />}
-                  progress={progressPct}
-                  footerItems={[
-                    {
-                      label: 'Stage',
-                      value: (
-                        <div className="relative inline-flex items-center mt-1">
-                          <select
-                            value={currentStage}
-                            onChange={(e) => handleStageChange(prog.id, e.target.value as LearningStage)}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`pl-2 pr-6 py-0.5 text-[10px] font-black rounded-full border transition-all cursor-pointer outline-none appearance-none ${currentStyle}`}
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'right 6px center',
-                              backgroundSize: '8px'
-                            }}
-                          >
-                            <option value="Not_Started">⚪ Not Started</option>
-                            <option value="Introduced">🌱 Introduced</option>
-                            <option value="Practicing">🔄 Practicing</option>
-                            <option value="Comfortable">📈 Comfortable</option>
-                            <option value="Confident">⭐ Confident</option>
-                            <option value="Needs_Practice">🔁 Needs Practice</option>
-                          </select>
-                        </div>
-                      ),
-                      icon: <BrainCircuit size={12} />
-                    },
-                    { label: 'Count', value: `${learnedCount} / ${targetCount}`, icon: <Target size={12} /> },
-                    { label: 'Interest', value: `${prog.interest_level ?? 3} / 5`, icon: <Star size={12} /> },
-                  ]}
-                  onEdit={() => {}}
-                  onDelete={() => {}}
-                  onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                <TaskCard
+                  task={task}
+                  onMarkPracticed={handleMarkPracticed}
+                  onUpdateStage={handleUpdateStage}
+                  onUpdateInterest={handleUpdateInterest}
+                  onToggleSchedule={handleToggleSchedule}
+                  onArchive={handleArchive}
+                  onUnarchive={handleUnarchive}
+                  onOpenDetails={(t) => setDrawerTask(t)}
+                  subjectName={subjectName}
+                  expandableContent={
+                    <div className="space-y-2">
+                      {(!activitiesMap[task.id] || activitiesMap[task.id].length === 0) ? (
+                        <p className="text-xs text-gray-400 text-center py-2">No activities yet.</p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {activitiesMap[task.id].slice(0, 5).map(act => (
+                            <li
+                              key={act.id}
+                              className="flex items-center gap-2 text-xs text-gray-600 p-1.5 hover:bg-violet-50 hover:text-violet-700 rounded-md cursor-pointer transition-colors"
+                              onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                            >
+                              <Zap size={12} className="text-violet-400 flex-shrink-0" />
+                              <span className="truncate flex-1 font-medium">{act.name}</span>
+                              {act.type && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 rounded">{act.type}</span>}
+                            </li>
+                          ))}
+                          {activitiesMap[task.id].length > 5 && (
+                            <li className="text-center text-[10px] text-gray-400 pt-1">
+                              + {activitiesMap[task.id].length - 5} more activities
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                      <button
+                        onClick={() => navigate(`/tasks/${task.id}/activities`)}
+                        className="w-full text-center text-[11px] font-bold text-violet-600 hover:text-violet-700 py-1"
+                      >
+                        Manage Activities
+                      </button>
+                    </div>
+                  }
                 />
               </StaggerItem>
             );
           })}
         </StaggerContainer>
+        );
+      })()}
+
+      {/* ── Details Drawer ──────────────────────────────────── */}
+      {drawerTask && (
+        <TaskDetailsDrawer
+          task={drawerTask}
+          onClose={() => setDrawerTask(null)}
+          onUpdateProgress={handleUpdateProgress}
+        />
       )}
+
+      {/* ── Toast Notifications ─────────────────────────────── */}
+      <TaskToastContainer toasts={toasts} />
     </div>
   );
 }

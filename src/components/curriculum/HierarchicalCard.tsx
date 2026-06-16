@@ -1,7 +1,7 @@
 // ============================================================
 // HierarchicalCard — Generic card for Subjects, Topics, Tasks, Activities
 // ============================================================
-import { Edit2, MoreVertical, Trash2, Calendar } from 'lucide-react';
+import { Edit2, MoreVertical, Trash2, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 interface HierarchicalCardProps {
@@ -12,11 +12,14 @@ interface HierarchicalCardProps {
   badge?: React.ReactNode;
   progress?: number;
   progressColor?: string;
+  statusHighlight?: 'scheduled' | 'completed' | 'default';
+  bottomProgressBar?: { current: number; total: number; colorClass: string };
   footerItems?: { label: string; value: React.ReactNode; icon?: React.ReactNode }[];
   onEdit?: () => void;
   onDelete?: () => void;
   onSchedule?: () => void;
-  onClick: () => void;
+  expandableContent?: React.ReactNode;
+  onClick?: () => void;
 }
 
 export function HierarchicalCard({
@@ -27,17 +30,31 @@ export function HierarchicalCard({
   badge,
   progress,
   progressColor = 'from-violet-500 to-purple-600',
+  statusHighlight = 'default',
+  bottomProgressBar,
   footerItems,
   onEdit,
   onDelete,
   onSchedule,
+  expandableContent,
   onClick,
 }: HierarchicalCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const baseClasses = "group relative bg-white rounded-2xl transition-all duration-300 overflow-hidden flex flex-col";
+  const hoverCursor = onClick ? 'cursor-pointer' : '';
+  let statusClasses = "border border-gray-100 shadow-sm hover:shadow-md";
+
+  if (statusHighlight === 'scheduled') {
+    statusClasses = "border-l-4 border-l-amber-500 border-y border-r border-y-gray-100 border-r-gray-100 shadow-md hover:shadow-lg bg-amber-50/10";
+  } else if (statusHighlight === 'completed') {
+    statusClasses = "border border-emerald-200 bg-emerald-50/10 shadow-sm hover:shadow-md";
+  }
 
   return (
     <div
-      className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer flex flex-col"
+      className={`${baseClasses} ${statusClasses} ${hoverCursor}`}
       onClick={onClick}
     >
       {/* ── Top Header Section ─────────────────────────────── */}
@@ -163,6 +180,40 @@ export function HierarchicalCard({
 
       {/* ── Hover Overlay Actions (Optional desktop polish) ── */}
       <div className="absolute inset-0 bg-violet-600/0 group-hover:bg-violet-600/[0.02] pointer-events-none transition-colors duration-300" />
+
+      {/* ── Bottom Segmented Progress Bar ── */}
+      {bottomProgressBar && (
+        <div className="flex h-1.5 w-full gap-0.5 mt-auto bg-white">
+          {Array.from({ length: bottomProgressBar.total }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-full flex-1 ${
+                i < bottomProgressBar.current ? bottomProgressBar.colorClass : 'bg-gray-100'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Expand Button ── */}
+      {expandableContent && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="w-full flex items-center justify-center py-2 bg-gray-50/50 hover:bg-violet-50/50 text-gray-400 hover:text-violet-600 border-t border-gray-50 transition-colors"
+        >
+          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+      )}
+
+      {/* ── Expanded Content ── */}
+      {expandableContent && isExpanded && (
+        <div className="px-4 py-3 border-t border-gray-50 bg-gray-50/30 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          {expandableContent}
+        </div>
+      )}
     </div>
   );
 }

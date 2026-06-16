@@ -24,6 +24,11 @@ function isDueToday(nextDueAt: string | null | undefined): boolean {
   return nextDueAt.split('T')[0] === today();
 }
 
+function isPracticedToday(lastPracticedAt: string | null | undefined): boolean {
+  if (!lastPracticedAt) return false;
+  return lastPracticedAt.split('T')[0] === today();
+}
+
 function isInactive(lastPracticedAt: string | null | undefined): boolean {
   if (!lastPracticedAt) return true;
   const diff = (Date.now() - new Date(lastPracticedAt).getTime()) / (1000 * 60 * 60 * 24);
@@ -74,6 +79,7 @@ function buildTaskWithProgress(
     progressPercent: progressPercent(learned, target),
     isOverdue: isOverdue(progress?.next_due_at),
     isDueToday: isDueToday(progress?.next_due_at),
+    isPracticedToday: isPracticedToday(progress?.last_practiced_at),
     isInactive: isInactive(progress?.last_practiced_at),
     // streak and mastery score removed as they are not in DbTaskProgress schema
     recommendedAction: recommendedAction(task, progress),
