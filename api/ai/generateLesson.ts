@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
-import { allowMethods, readString, sendError } from '../_utils/http';
+import { allowMethods, readString, sendError } from '../../src/lib/api-utils/http.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

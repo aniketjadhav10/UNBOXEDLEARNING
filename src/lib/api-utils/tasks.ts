@@ -1,4 +1,4 @@
-import type { LearningTask, TaskStatus } from '../../src/types';
+import type { LearningTask, TaskStatus } from '../../types';
 
 type TaskRow = Record<string, unknown>;
 type ProgressRow = Record<string, unknown> | null | undefined;

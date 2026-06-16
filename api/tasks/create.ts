@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { allowMethods, sendError } from '../_utils/http';
-import { createServerSupabase } from '../_utils/supabase';
-import { createTaskFromBody, taskFromRow, taskInsertPayload } from '../_utils/tasks';
+import { allowMethods, sendError } from '../../src/lib/api-utils/http.js';
+import { createServerSupabase } from '../../src/lib/api-utils/supabase.js';
+import { createTaskFromBody, taskFromRow, taskInsertPayload } from '../../src/lib/api-utils/tasks.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!allowMethods(req, res, ['POST'])) return;

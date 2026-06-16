@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { allowMethods, sendError } from '../_utils/http';
+import { allowMethods, sendError } from '../../src/lib/api-utils/http.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!allowMethods(req, res, ['POST'])) return;
