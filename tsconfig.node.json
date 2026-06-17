@@ -9,7 +9,8 @@
     "moduleResolution": "Bundler",
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "esModuleInterop": true
   },
   "include": ["vite.config.ts", "api/**/*.ts"]
 }
