@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { allowMethods, readString, sendError } from '../../src/lib/api-utils/http.js';
-import { createServerSupabase } from '../../src/lib/api-utils/supabase.js';
+import { allowMethods, readString, sendError } from '../../src/lib/api-utils/http';
+import { createServerSupabase } from '../../src/lib/api-utils/supabase';
 import nodemailer from 'nodemailer';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
