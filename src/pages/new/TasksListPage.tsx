@@ -1,17 +1,16 @@
 // ============================================================
 // TasksListPage — Hierarchical level 3: Tasks under a Topic
 // ============================================================
-import { CheckSquare, Search, AlertTriangle, BookOpen, Zap } from 'lucide-react';
+import { CheckSquare, Search, AlertTriangle, BookOpen, Zap, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
-import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StaggerContainer, StaggerItem } from '../../components/motion/MotionWrappers';
 
 import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
-import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
+import { TaskDetailsDialog } from '../../components/tasks/TaskDetailsDialog';
 import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
 import { useTaskManagement } from '../../hooks/useTaskManagement';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
@@ -158,17 +157,26 @@ export function TasksListPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-4">
+    <div className="animate-fade-in" style={{ background: '#f4f6f8', margin: '-20px -16px', padding: '20px 16px 100px', minHeight: '100vh' }}>
       <div className="mb-2">
         <BackButton />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">{topic?.title || 'Tasks'}</h1>
-          <p className="text-sm text-gray-400">
-            {topicTasks.length} task{topicTasks.length !== 1 ? 's' : ''} in this topic
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">{topic?.title || 'Tasks'}</h1>
+            <p className="text-sm text-gray-400">
+              {topicTasks.length} task{topicTasks.length !== 1 ? 's' : ''} in this topic
+            </p>
+          </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <Plus size={16} />
+            Add Task
+          </button>
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -263,10 +271,7 @@ export function TasksListPage() {
         </>
       )}
 
-      <FloatingAddButton
-        onClick={() => setIsAddModalOpen(true)}
-        label="Add Task"
-      />
+
 
       <CurriculumFormModal
         isOpen={isAddModalOpen}
@@ -276,9 +281,9 @@ export function TasksListPage() {
         onSubmit={handleCreateTask}
       />
 
-      {/* ── Details Drawer ──────────────────────────────────── */}
+      {/* ── Details Dialog ──────────────────────────────────── */}
       {drawerTask && (
-        <TaskDetailsDrawer
+        <TaskDetailsDialog
           task={drawerTask}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}

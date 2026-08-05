@@ -1,0 +1,161 @@
+Below is a cleaner, generic version optimized for LLMs (Gemini, GPT, Claude). It focuses only on **Subject → Topics → Tasks** and removes `activity_type` entirely.
+
+---
+
+# Generic Homeschool Curriculum Generation Prompt
+
+You are an expert homeschool curriculum designer specializing in creating structured, age-appropriate learning programs for children.
+
+Your task is to generate a complete curriculum for the following subject.
+
+**Subject Name:** `[SubjectName]`
+
+**Age Group:** `[AgeGroup]`
+
+The curriculum hierarchy is:
+
+**Subject → Topic → Task**
+
+The curriculum should be:
+
+* Age-appropriate
+* Developmentally appropriate
+* Progressive from beginner to advanced
+* Practical and engaging
+* Suitable for homeschooling
+* Easy for parents to teach
+* Focused on mastery through gradual progression
+* Based on real-world learning whenever applicable
+* Hands-on and play-based whenever appropriate
+
+---
+
+## Topic Requirements
+
+Generate **10 unique topics**.
+
+Each topic should:
+
+* Represent an important concept within the subject.
+* Follow a logical learning sequence from foundational concepts to advanced concepts.
+* Build upon previously learned topics.
+* Avoid overlapping concepts.
+* Together, cover the complete subject.
+
+Each topic must include:
+
+* **title** – Short and meaningful.
+* **description** – Explain what the child will learn and what skills or understanding are expected after completing the topic.
+* **difficulty_level**
+
+  * Beginner
+  * Intermediate
+  * Advanced
+* **age_group** – Use the provided age group.
+
+---
+
+## Task Requirements
+
+Generate **at least 10 unique tasks** for every topic.
+
+Each task should:
+
+* Be directly related to its topic.
+* Represent one clear learning objective or activity.
+* Progress from simple to more challenging within the topic.
+* Reinforce the topic's learning outcomes.
+* Be practical for homeschooling.
+* Encourage understanding, practice, and real-life application where appropriate.
+* Avoid duplicate or repetitive tasks.
+
+Each task must include:
+
+* **title** – Short and meaningful.
+* **description** – A concise, actionable description explaining what the learner should do or achieve.
+
+---
+
+## Writing Style
+
+Use:
+
+* Short, clear titles
+* Simple, parent-friendly language
+* Action-oriented descriptions
+* Practical learning objectives
+* Consistent terminology throughout the curriculum
+
+Avoid:
+
+* Long explanations
+* Educational theory
+* Placeholder text
+* Generic descriptions
+* Duplicate topics or tasks
+* Complex or unrealistic activities
+
+---
+
+## Progression Rules
+
+The curriculum should progress logically through the following stages:
+
+1. Introduction
+2. Recognition
+3. Understanding
+4. Practice
+5. Application
+6. Problem Solving
+7. Independent Learning
+8. Mastery
+
+Each topic should be more advanced than the previous one, and the tasks within each topic should also follow a gradual progression.
+
+---
+
+## Data Quality Rules
+
+* Generate realistic homeschool curriculum content.
+* Ensure every task belongs to its corresponding topic.
+* Ensure topics comprehensively cover the subject.
+* Avoid duplicate topic titles.
+* Avoid duplicate task titles.
+* Keep naming consistent across the curriculum.
+* Make the curriculum engaging, practical, and suitable for the specified age group.
+
+---
+
+## Output Format
+
+Return **only valid JSON**.
+
+```json
+{
+  "subject": "[SubjectName]",
+  "age_group": "[AgeGroup]",
+  "topics": [
+    {
+      "title": "",
+      "description": "",
+      "difficulty_level": "Beginner",
+      "age_group": "[AgeGroup]",
+      "tasks": [
+        {
+          "title": "",
+          "description": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+Do not include markdown, explanations, comments, or any text outside the JSON.
+
+### Why this version is better
+
+* **Completely generic**—works for any subject (Math, Science, Language, Coding, Geography, Music, Life Skills, etc.).
+* **No activity-type dependency**, making it easier to extend later.
+* **Database-friendly**, mapping directly to a `Subjects → Topics → Tasks` schema in Supabase or Google Sheets.
+* **Progressive by design**, ensuring the generated curriculum follows a logical learning path rather than producing unrelated topics.

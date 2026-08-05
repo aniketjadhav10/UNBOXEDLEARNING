@@ -1,8 +1,8 @@
 // ============================================================
 // TaskCard — Main card component for a task with progress
 // ============================================================
-import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { useState, useRef } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
 import { LearningStageBadge } from './LearningStageBadge';
@@ -20,6 +20,7 @@ interface TaskCardProps {
   onOpenDetails: (task: TaskWithProgress) => void;
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
+  topicName?: string;
   expandableContent?: React.ReactNode;
 }
 
@@ -64,131 +65,154 @@ export function TaskCard({
   onOpenDetails,
   onToggleSchedule,
   subjectName,
+  topicName,
   expandableContent,
 }: TaskCardProps) {
   const { progress } = task;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showDescPopover, setShowDescPopover] = useState(false);
+  const infoRef = useRef<HTMLButtonElement>(null);
 
-  // Card border accent based on urgency
-  const borderAccent = task.isOverdue
-    ? 'border-l-4 border-l-red-400'
+  // Determine overall card style based on stage and urgency
+  const isConfident = progress?.learning_stage === 'Confident';
+  const isNeedsPractice = progress?.learning_stage === 'Needs_Practice';
+  
+  const bgStyle = task.isOverdue
+    ? 'bg-rose-50 border-rose-200'
     : task.isDueToday
-    ? 'border-l-4 border-l-blue-400'
-    : progress?.learning_stage === 'Confident'
-    ? 'border-l-4 border-l-emerald-400'
-    : progress?.learning_stage === 'Needs_Practice'
-    ? 'border-l-4 border-l-orange-400'
-    : 'border-l-4 border-l-transparent';
+    ? 'bg-blue-50 border-blue-200'
+    : isConfident
+    ? 'bg-emerald-50 border-emerald-200'
+    : isNeedsPractice
+    ? 'bg-amber-50 border-amber-200'
+    : 'bg-white border-gray-100 hover:bg-violet-50/30';
 
   const isScheduled = progress?.is_scheduled_this_week;
 
   return (
     <article
       className={[
-        'group bg-white rounded-2xl border border-gray-100 shadow-card',
-        'hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300',
-        borderAccent,
-        'overflow-hidden',
+        'group rounded-2xl border shadow-sm',
+        'hover:shadow-md hover:-translate-y-0.5 transition-all duration-300',
+        bgStyle,
+        'overflow-hidden flex flex-col relative',
       ].join(' ')}
     >
       {/* ── TOP SECTION ─────────────────────────────────────── */}
-      <div className="p-4 pb-0">
-        <div className="flex items-start gap-3">
-          {/* Progress ring */}
-          <div className="flex-shrink-0 mt-0.5">
-            <TaskProgressRing percent={task.progressPercent} size={52} />
-          </div>
-
-          {/* Title + meta */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2 flex-wrap">
-              <h3 className="font-bold text-gray-900 text-sm leading-snug flex-1">
-                {task.name}
-              </h3>
-              {isScheduled && (
-                <span className="flex-shrink-0 text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">
-                  📅 This week
-                </span>
-              )}
-            </div>
-
-            {/* Subject + topic */}
-            {subjectName && (
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{subjectName}</p>
-            )}
-
-            {/* Stage + interest row */}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} />
-              <InterestLevelIndicator
-                level={(progress?.interest_level ?? 3) as InterestLevel}
-                interactive
-                onSelect={(l) => onUpdateInterest(task, l)}
-              />
-            </div>
-          </div>
+      <div className="p-4 pb-2 flex gap-3">
+        {/* Progress ring */}
+        <div className="flex-shrink-0">
+          <TaskProgressRing percent={task.progressPercent} size={44} />
         </div>
 
-        {/* Smart indicators */}
-        <SmartIndicators task={task} />
+        {/* Details Column */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          {/* Row 1: Title & Info */}
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-gray-900 text-sm leading-tight flex-1 line-clamp-2">
+              {task.name}
+            </h3>
+            
+            <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+              {task.description && (
+                <div className="relative">
+                  <button
+                    ref={infoRef}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDescPopover((v) => !v);
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-violet-500 transition-colors rounded"
+                    aria-label="Show task description"
+                  >
+                    <Info size={14} />
+                  </button>
+                  {showDescPopover && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setShowDescPopover(false)}
+                        aria-hidden="true"
+                      />
+                      <div className="absolute right-0 top-6 z-40 w-64 bg-gray-900 text-white text-xs rounded-xl shadow-xl p-3 leading-relaxed animate-fade-in">
+                        <p className="font-semibold text-violet-300 mb-1 text-[10px] uppercase tracking-wider">Description</p>
+                        <p>{task.description}</p>
+                        <div className="absolute -top-1.5 right-2 w-3 h-3 bg-gray-900 rotate-45" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Subject/Topic & Scheduled Badge */}
+          <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 font-medium">
+            {(subjectName || topicName) && (
+              <span className="truncate max-w-[150px]">
+                {subjectName} {subjectName && topicName && ' › '} {topicName}
+              </span>
+            )}
+            {isScheduled && (
+              <span className="text-[10px] font-bold text-violet-700 bg-violet-100/70 px-1.5 py-0.5 rounded border border-violet-200">
+                📅 This week
+              </span>
+            )}
+          </div>
+
+          {/* Row 3: Badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} size="sm" />
+            <InterestLevelIndicator
+              level={(progress?.interest_level ?? 3) as InterestLevel}
+              interactive
+              onSelect={(l) => onUpdateInterest(task, l)}
+              size="sm"
+            />
+            <SmartIndicators task={task} />
+          </div>
+        </div>
       </div>
 
       {/* ── MIDDLE SECTION ──────────────────────────────────── */}
-      <div className="px-4 pt-3">
-        {/* Progress bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs font-medium text-gray-500">
-            <span className="flex items-center gap-1">
-              <TrendingUp size={11} className="text-violet-400" />
-              {progress?.learned_count ?? 0} / {progress?.target_count ?? 5} sessions
+      <div className="px-4 pb-2 flex-1">
+        {/* Progress bar and Date row condensed */}
+        <div className="flex flex-col gap-2">
+          <div className="w-full flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-700 w-10 text-right">{task.progressPercent}%</span>
+            <div className="flex-1 h-2 bg-gray-200/50 rounded-full overflow-hidden">
+              <div
+                className={[
+                  'h-full rounded-full transition-all duration-700 ease-out',
+                  task.progressPercent >= 80 ? 'bg-emerald-500' : task.progressPercent >= 50 ? 'bg-violet-500' : task.progressPercent >= 25 ? 'bg-amber-500' : 'bg-rose-500',
+                ].join(' ')}
+                style={{ width: `${task.progressPercent}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-medium text-gray-500 flex items-center gap-0.5 whitespace-nowrap">
+              <TrendingUp size={10} />
+              {progress?.learned_count ?? 0}/{progress?.target_count ?? 5}
             </span>
-            <span className="text-violet-600 font-bold">{task.progressPercent}%</span>
           </div>
-          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={[
-                'h-full rounded-full transition-all duration-700 ease-out',
-                task.progressPercent >= 80
-                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                  : task.progressPercent >= 50
-                  ? 'bg-gradient-to-r from-violet-400 to-purple-500'
-                  : task.progressPercent >= 25
-                  ? 'bg-gradient-to-r from-amber-400 to-orange-500'
-                  : 'bg-gradient-to-r from-red-400 to-rose-500',
-              ].join(' ')}
-              style={{ width: `${task.progressPercent}%` }}
-              role="progressbar"
-              aria-valuenow={task.progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-        </div>
 
-        {/* Date row */}
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-          <span className="flex items-center gap-1">
-            <Clock size={11} />
-            {formatLastPracticed(progress?.last_practiced_at)}
-          </span>
-          <span
-            className={[
-              'flex items-center gap-1 font-medium',
-              task.isOverdue ? 'text-red-500' : task.isDueToday ? 'text-blue-500' : 'text-gray-400',
-            ].join(' ')}
-          >
-            <Calendar size={11} />
-            Due: {formatDate(progress?.next_due_at)}
-          </span>
-          <span className="flex items-center gap-1 ml-auto">
-            <Repeat size={11} />
-            {progress?.repeat_interval === 1 ? 'Daily' : progress?.repeat_interval === 7 ? 'Weekly' : progress?.repeat_interval ? `${progress.repeat_interval}d` : '—'}
-          </span>
+          <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium bg-white/40 px-2 py-1 rounded-lg">
+            <span className="flex items-center gap-1">
+              <Clock size={10} /> {formatLastPracticed(progress?.last_practiced_at)}
+            </span>
+            <span className={task.isOverdue ? 'text-rose-600 font-bold' : task.isDueToday ? 'text-blue-600 font-bold' : ''}>
+              <Calendar size={10} className="inline mr-1" />
+              Due: {formatDate(progress?.next_due_at)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Repeat size={10} /> {progress?.repeat_interval ? `${progress.repeat_interval}d` : '—'}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ── BOTTOM SECTION — Actions ─────────────────────────── */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-3 mt-auto">
         <TaskQuickActions
           task={task}
           onMarkPracticed={onMarkPracticed}
@@ -201,14 +225,14 @@ export function TaskCard({
       </div>
 
       {/* ── Bottom Segmented Progress Bar ── */}
-      <div className="flex h-1.5 w-full gap-0.5 mt-auto bg-white">
+      <div className="flex h-1.5 w-full gap-0.5 mt-auto bg-gray-100/50">
         {Array.from({ length: 5 }).map((_, i) => {
           const progData = getStageProgressData(progress?.learning_stage);
           return (
             <div
               key={i}
-              className={`h-full flex-1 ${
-                i < progData.current ? progData.colorClass : 'bg-gray-100'
+              className={`h-full flex-1 transition-colors ${
+                i < progData.current ? progData.colorClass : 'bg-transparent'
               }`}
             />
           );

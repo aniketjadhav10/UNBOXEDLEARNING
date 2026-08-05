@@ -2,10 +2,15 @@
 // MainLayout — Root layout: Sidebar + Navbar + Content area
 // ============================================================
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 import { PageTransition } from '../components/motion/PageTransition';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import { isOnboardingComplete } from '../context/OnboardingContext';
+import { FloatingChat } from '../components/chat/FloatingChat';
 
 /* Map path segments → readable page titles */
 const PAGE_TITLES: Record<string, string> = {
@@ -22,6 +27,10 @@ const PAGE_TITLES: Record<string, string> = {
   'my-learning': 'My Learning',
   'progress':    'My Progress',
   'profile':     'My Profile',
+  'syllabus-generator': 'AI Syllabus Generator',
+  'library':           'Subject Library',
+  'learning-path':     'Learning Path',
+  'lesson':            'Lesson',
 };
 
 function usePageTitle(): string {
@@ -37,9 +46,27 @@ function usePageTitle(): string {
 export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pageTitle = usePageTitle();
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  const { rawChildren } = useData();
+  const showSetupBanner = isAdmin && rawChildren.length === 0 && !isOnboardingComplete();
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f5f3ff]">
+      {/* ── Setup incomplete banner ───────────────────────────── */}
+      {showSetupBanner && (
+        <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-amber-500 text-white text-xs font-semibold py-2 px-4">
+          <AlertTriangle size={13} />
+          <span>Your workspace isn't fully set up yet.</span>
+          <button
+            onClick={() => navigate('/onboarding')}
+            className="underline underline-offset-2 hover:no-underline ml-1"
+          >
+            Complete Setup →
+          </button>
+        </div>
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -62,6 +89,9 @@ export function MainLayout() {
           <PageTransition />
         </main>
       </div>
+
+      {/* ── Global Floating Chat ────────────────────────────── */}
+      <FloatingChat />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 // ============================================================
 import { Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface FormField {
   name: string;
@@ -13,6 +14,13 @@ export interface FormField {
   required?: boolean;
 }
 
+export interface ExtraAction {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: (currentFormData: any) => void | Promise<void>;
+  loading?: boolean;
+}
+
 interface CurriculumFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,6 +29,7 @@ interface CurriculumFormModalProps {
   initialData?: any;
   onSubmit: (data: any) => Promise<void>;
   loading?: boolean;
+  extraActions?: ExtraAction[];
 }
 
 export function CurriculumFormModal({
@@ -31,6 +40,7 @@ export function CurriculumFormModal({
   initialData,
   onSubmit,
   loading: externalLoading,
+  extraActions,
 }: CurriculumFormModalProps) {
   const [formData, setFormData] = useState<any>({});
   const [loading, setLoading] = useState(false);
@@ -60,7 +70,7 @@ export function CurriculumFormModal({
 
   const isLoading = loading || externalLoading;
 
-  return (
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-fade-in"
@@ -69,10 +79,10 @@ export function CurriculumFormModal({
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
         <form
           onSubmit={handleSubmit}
-          className="bg-white w-full max-w-md rounded-3xl shadow-2xl pointer-events-auto overflow-hidden animate-slide-in"
+          className="bg-white w-full max-w-md rounded-3xl shadow-2xl pointer-events-auto overflow-hidden animate-slide-in max-h-screen overflow-y-auto"
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 sticky top-0 z-10">
             <h3 className="text-base font-bold text-gray-900">{title}</h3>
             <button
               type="button"
@@ -127,28 +137,47 @@ export function CurriculumFormModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <><Save size={16} /> Save Changes</>
-              )}
-            </button>
+          <div className="px-6 py-4 border-t border-gray-100 flex flex-wrap gap-3 sticky bottom-0 bg-white z-10">
+            {extraActions?.map((action, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => action.onClick(formData)}
+                disabled={action.loading || isLoading}
+                className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-sm font-bold rounded-2xl transition-colors flex items-center justify-center gap-2 mb-2"
+              >
+                {action.loading ? (
+                  <div className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+                ) : (
+                  action.icon
+                )}
+                {action.label}
+              </button>
+            ))}
+            <div className="w-full flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-violet-200 flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <><Save size={16} /> Save Changes</>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

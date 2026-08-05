@@ -1,5 +1,6 @@
 import { Save, X, CalendarDays, Star, Repeat, Target, BrainCircuit } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getTaskProgress } from '../../services/curriculumService';
 import { updateTaskProgress } from '../../services/taskService';
 import type { SupabaseTaskProgress, LearningStage, InterestLevel } from '../../types/taskTypes';
@@ -81,7 +82,7 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-fade-in"
@@ -90,10 +91,10 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
         <form
           onSubmit={handleSubmit}
-          className="bg-white w-full max-w-md rounded-3xl shadow-2xl pointer-events-auto overflow-hidden animate-slide-in"
+          className="bg-white w-full max-w-sm rounded-3xl shadow-2xl pointer-events-auto overflow-hidden animate-slide-in max-h-[90vh] flex flex-col"
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
                 <CalendarDays size={16} />
@@ -110,7 +111,7 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
           </div>
 
           {/* Form Content */}
-          <div className="p-5 space-y-5">
+          <div className="p-5 space-y-5 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-10">
                 <div className="w-6 h-6 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
@@ -219,7 +220,7 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
+          <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -241,6 +242,7 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
           </div>
         </form>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

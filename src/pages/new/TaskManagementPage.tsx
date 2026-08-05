@@ -13,7 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
-import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
+import { TaskDetailsDialog } from '../../components/tasks/TaskDetailsDialog';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { TaskFilters } from '../../components/tasks/TaskFilters';
 import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
@@ -347,9 +347,9 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
         )}
       </div>
 
-      {/* ── Details Drawer ──────────────────────────────────── */}
+      {/* ── Details Dialog ──────────────────────────────────── */}
       {drawerTask && (
-        <TaskDetailsDrawer
+        <TaskDetailsDialog
           task={drawerTask}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}

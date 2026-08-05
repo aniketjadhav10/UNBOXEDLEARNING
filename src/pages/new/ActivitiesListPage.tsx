@@ -3,14 +3,13 @@
 // Fixed: uses fetchTaskById, fetchTopicById, fetchSubjectById.
 // Uses ConfirmModal, error state, debounced search.
 // ============================================================
-import { Zap, Search, Clock, Box, PlayCircle, AlertTriangle, CalendarDays } from 'lucide-react';
+import { Zap, Search, Clock, Box, PlayCircle, AlertTriangle, CalendarDays, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
 import { TaskScheduleModal } from '../../components/curriculum/TaskScheduleModal';
-import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -162,11 +161,20 @@ export function ActivitiesListPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">{task?.name || 'Activities'}</h1>
-          <p className="text-sm text-gray-400">
-            {activities.length} activit{activities.length !== 1 ? 'ies' : 'y'}
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">{task?.name || 'Activities'}</h1>
+            <p className="text-sm text-gray-400">
+              {activities.length} activit{activities.length !== 1 ? 'ies' : 'y'}
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditingActivity(null); setModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm hidden sm:flex"
+          >
+            <Plus size={16} />
+            Add Activity
+          </button>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -178,6 +186,12 @@ export function ActivitiesListPage() {
               <CalendarDays size={16} /> Schedule
             </button>
           )}
+          <button
+            onClick={() => { setEditingActivity(null); setModalOpen(true); }}
+            className="flex sm:hidden items-center gap-2 px-3 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-2xl transition-colors shadow-sm shrink-0"
+          >
+            <Plus size={16} /> Add
+          </button>
           <div className="relative flex-1 sm:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -234,10 +248,6 @@ export function ActivitiesListPage() {
         </>
       )}
 
-      <FloatingAddButton
-        onClick={() => { setEditingActivity(null); setModalOpen(true); }}
-        label="Add Activity"
-      />
 
       <CurriculumFormModal
         isOpen={modalOpen}

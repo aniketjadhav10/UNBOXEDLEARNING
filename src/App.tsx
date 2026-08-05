@@ -7,11 +7,14 @@ import { AuthProvider }  from './context/AuthContext';
 import { DataProvider }  from './context/DataContext';
 import { AppRoutes }     from './routes/AppRoutes';
 
+import { AppearanceManager } from './components/AppearanceManager';
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <DataProvider>
+          <AppearanceManager />
           <AppRoutes />
           {/* Global toast renderer — reads from useToastStore */}
           <GlobalToast />

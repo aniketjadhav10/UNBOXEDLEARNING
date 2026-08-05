@@ -2,13 +2,14 @@
 // TopicsPage — Production-ready with real progress, ConfirmModal,
 // toast, debounced search, and document title
 // ============================================================
-import { Layers, Search, BarChart2, CheckCircle2, CalendarDays } from 'lucide-react';
+import { Layers, Search, BarChart2, CheckCircle2, CalendarDays, Wand2, Plus } from 'lucide-react';
+import { supabase } from '../../services/supabase';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
-import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
+import { TaskAssignmentModal } from '../../components/curriculum/TaskAssignmentModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -59,6 +60,8 @@ export function TopicsPage() {
   const [confirmId,      setConfirmId]      = useState<string | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [visibleCount,   setVisibleCount]   = useState(50);
+  const [generatingAi,   setGeneratingAi]   = useState(false);
+  const [assignModalTopicId, setAssignModalTopicId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -144,6 +147,41 @@ export function TopicsPage() {
     }
   }
 
+  async function handleGenerateAi() {
+    if (!editingTopic) return;
+    setGeneratingAi(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/ai/generateTasks', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': session ? `Bearer ${session.access_token}` : ''
+        },
+        body: JSON.stringify({
+          topic_id: editingTopic.id,
+          topic_name: editingTopic.title,
+          subject_name: subject?.name || '',
+          child_id: subject?.child_id || '',
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to generate content');
+      }
+
+      toast.success('AI successfully generated tasks!');
+      setModalOpen(false);
+      setEditingTopic(null);
+      window.location.reload(); 
+    } catch (err: any) {
+      toast.error(err.message || 'Error generating AI content');
+    } finally {
+      setGeneratingAi(false);
+    }
+  }
+
   // Real per-topic stats from DataContext
   const topicStats = useMemo(() => {
     const map: Record<string, { tasksCount: number; completed: boolean; progress: number }> = {};
@@ -183,17 +221,26 @@ export function TopicsPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-4">
+    <div className="animate-fade-in" style={{ background: '#f4f6f8', margin: '-20px -16px', padding: '20px 16px 100px', minHeight: '100vh' }}>
       <div className="mb-2">
         <BackButton />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">{subject?.name || 'All Topics'}</h1>
-          <p className="text-sm text-gray-400">
-            {topics.length} topic{topics.length !== 1 ? 's' : ''} · {subject ? 'Learning areas in this subject' : 'All registered learning areas'}
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">{subject?.name || 'All Topics'}</h1>
+            <p className="text-sm text-gray-400">
+              {topics.length} topic{topics.length !== 1 ? 's' : ''} · {subject ? 'Learning areas in this subject' : 'All registered learning areas'}
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditingTopic(null); setModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <Plus size={16} />
+            Add Topic
+          </button>
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -271,6 +318,7 @@ export function TopicsPage() {
                   ]}
                   onEdit={() => { setEditingTopic(topic); setModalOpen(true); }}
                   onDelete={() => setConfirmId(topic.id)}
+                  onAssign={() => setAssignModalTopicId(topic.id)}
                   onClick={() => navigate(`/topics/${topic.id}/tasks`)}
                 />
               );
@@ -289,10 +337,6 @@ export function TopicsPage() {
         </>
       )}
 
-      <FloatingAddButton
-        onClick={() => { setEditingTopic(null); setModalOpen(true); }}
-        label="Add Topic"
-      />
 
       <CurriculumFormModal
         isOpen={modalOpen}
@@ -301,6 +345,12 @@ export function TopicsPage() {
         fields={fields}
         initialData={editingTopic}
         onSubmit={handleSubmit}
+        extraActions={editingTopic ? [{
+          label: 'Generate Tasks with AI',
+          icon: <Wand2 size={16} />,
+          onClick: handleGenerateAi,
+          loading: generatingAi
+        }] : undefined}
       />
 
       <ConfirmModal
@@ -313,6 +363,17 @@ export function TopicsPage() {
         confirmLabel="Delete Topic"
         danger
       />
+
+      {assignModalTopicId && (
+        <TaskAssignmentModal
+          isOpen={!!assignModalTopicId}
+          onClose={() => setAssignModalTopicId(null)}
+          onAssigned={() => {
+            // refresh data implicitly via DataContext or just close
+            setAssignModalTopicId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

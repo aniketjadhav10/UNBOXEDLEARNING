@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   CalendarClock,
   ChevronLeft,
+  ChevronDown,
   GraduationCap,
   Heart,
   Home,
@@ -18,33 +19,57 @@ import {
   Users,
   X,
   Zap,
+  Sparkles,
+  LibraryBig,
 } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
   label: string;
-  path: string;
+  path?: string;
   icon: React.ElementType;
+  subItems?: { label: string; path: string; icon: React.ElementType }[];
 }
 
 const ADMIN_NAV: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: Home },
-  { label: 'Subjects', path: '/subjects', icon: BookOpen },
-  { label: 'Topics', path: '/topics', icon: ListChecks },
-  { label: 'Tasks', path: '/tasks', icon: BrainCircuit },
-  { label: 'Activities', path: '/activities', icon: Zap },
-  { label: 'This Week', path: '/this-week', icon: CalendarCheck },
-  { label: 'Scheduled', path: '/scheduled', icon: CalendarClock },
-  { label: 'Reports', path: '/reports', icon: BarChart3 },
-  { label: 'Archived', path: '/archived', icon: Archive },
-  { label: 'Family', path: '/family', icon: Heart },
-  { label: 'Kids', path: '/kids', icon: Users },
-  { label: 'System Logs', path: '/system/emails', icon: Mail },
-  { label: 'Settings', path: '/settings', icon: Settings },
+  {
+    label: 'Curriculum',
+    icon: BookOpen,
+    subItems: [
+      { label: 'Subjects', path: '/subjects', icon: BookOpen },
+      { label: 'Library', path: '/library', icon: LibraryBig },
+      { label: 'Topics', path: '/topics', icon: ListChecks },
+      { label: 'Tasks', path: '/tasks', icon: BrainCircuit },
+      { label: 'Activities', path: '/activities', icon: Zap },
+    ]
+  },
+  {
+    label: 'Planning',
+    icon: CalendarCheck,
+    subItems: [
+      { label: 'This Week', path: '/this-week', icon: CalendarCheck },
+      { label: 'Scheduled', path: '/scheduled', icon: CalendarClock },
+      { label: 'Reports', path: '/reports', icon: BarChart3 },
+      { label: 'Archived', path: '/archived', icon: Archive },
+    ]
+  },
+  {
+    label: 'Administration',
+    icon: Settings,
+    subItems: [
+      { label: 'Family', path: '/family', icon: Heart },
+      { label: 'Kids', path: '/kids', icon: Users },
+      { label: 'Global Templates', path: '/admin/templates', icon: LibraryBig },
+      { label: 'AI Syllabus', path: '/syllabus-generator', icon: Sparkles },
+      { label: 'System Logs', path: '/system/emails', icon: Mail },
+      { label: 'Settings', path: '/settings', icon: Settings },
+    ]
+  }
 ];
 
 const STUDENT_NAV: NavItem[] = [
@@ -55,6 +80,77 @@ const STUDENT_NAV: NavItem[] = [
   { label: 'Profile', path: '/profile', icon: Star },
 ];
 
+function NavGroup({ item, currentPath, onClose }: { item: NavItem; currentPath: string; onClose: () => void }) {
+  const hasActiveChild = item.subItems?.some(
+    (sub) => currentPath === sub.path || (sub.path !== '/' && currentPath.startsWith(sub.path))
+  );
+  
+  const [isOpen, setIsOpen] = useState(hasActiveChild || false);
+
+  useEffect(() => {
+    if (hasActiveChild) setIsOpen(true);
+  }, [hasActiveChild]);
+
+  return (
+    <div className="mb-1">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-violet-200 hover:bg-white/10 hover:text-white transition-all duration-200 group"
+      >
+        <div className="flex items-center gap-3">
+          <item.icon size={17} className={isOpen ? "text-violet-300" : "group-hover:text-violet-300"} />
+          {item.label}
+        </div>
+        <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-violet-300' : 'text-violet-400/50 group-hover:text-violet-300'}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && item.subItems && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 pl-4 pr-1 space-y-0.5">
+              {item.subItems.map((sub) => (
+                <NavLink
+                  key={sub.path}
+                  to={sub.path}
+                  end={sub.path === '/'}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    [
+                      'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+                      isActive
+                        ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
+                        : 'text-violet-200/80 hover:bg-white/10 hover:text-white border border-transparent',
+                    ].join(' ')
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={[
+                          'w-0.5 h-3.5 rounded-full transition-all duration-200 flex-shrink-0',
+                          isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
+                        ].join(' ')}
+                      />
+                      <sub.icon size={15} />
+                      {sub.label}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -64,11 +160,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { isAdmin, signOut } = useAuth();
   const { kids } = useData();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = useMemo(() => {
     let items = isAdmin ? ADMIN_NAV : STUDENT_NAV;
     if (isAdmin && kids.length <= 1) {
-      items = items.filter((item) => item.label !== 'Kids');
+      items = items.map(group => {
+        if (group.subItems) {
+          return {
+            ...group,
+            subItems: group.subItems.filter(item => item.label !== 'Kids')
+          };
+        }
+        return group.label !== 'Kids' ? group : null;
+      }).filter(Boolean) as NavItem[];
     }
     return items;
   }, [isAdmin, kids.length]);
@@ -131,7 +236,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-3 space-y-0.5 hide-scrollbar">
           {navItems.map((item, index) => (
             <motion.div
-              key={item.path}
+              key={item.label}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -141,36 +246,40 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 delay: 0.05 * index,
               }}
             >
-            <NavLink
-              to={item.path}
-              end={item.path === '/'}
-              onClick={onClose}
-              className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                  isActive
-                    ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
-                    : 'text-violet-200 hover:bg-white/10 hover:text-white border border-transparent',
-                ].join(' ')
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Active indicator bar */}
-                  <span
-                    className={[
-                      'w-0.5 h-4 rounded-full transition-all duration-200 flex-shrink-0',
-                      isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
-                    ].join(' ')}
-                  />
-                  <item.icon size={17} />
-                  {item.label}
-                  {isActive && (
-                    <ChevronLeft size={14} className="ml-auto rotate-180 text-violet-300" />
+              {item.subItems ? (
+                <NavGroup item={item} currentPath={location.pathname} onClose={onClose} />
+              ) : (
+                <NavLink
+                  to={item.path!}
+                  end={item.path === '/'}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    [
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mb-1',
+                      isActive
+                        ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
+                        : 'text-violet-200 hover:bg-white/10 hover:text-white border border-transparent',
+                    ].join(' ')
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {/* Active indicator bar */}
+                      <span
+                        className={[
+                          'w-0.5 h-4 rounded-full transition-all duration-200 flex-shrink-0',
+                          isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
+                        ].join(' ')}
+                      />
+                      <item.icon size={17} />
+                      {item.label}
+                      {isActive && (
+                        <ChevronLeft size={14} className="ml-auto rotate-180 text-violet-300" />
+                      )}
+                    </>
                   )}
-                </>
+                </NavLink>
               )}
-            </NavLink>
             </motion.div>
           ))}
         </nav>

@@ -18,6 +18,7 @@ interface HierarchicalCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onSchedule?: () => void;
+  onAssign?: () => void;
   expandableContent?: React.ReactNode;
   onClick?: () => void;
 }
@@ -36,6 +37,7 @@ export function HierarchicalCard({
   onEdit,
   onDelete,
   onSchedule,
+  onAssign,
   expandableContent,
   onClick,
 }: HierarchicalCardProps) {
@@ -90,7 +92,7 @@ export function HierarchicalCard({
             </button>
           )}
 
-          {(onEdit || onDelete) && (
+          {(onEdit || onDelete || onAssign) && (
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -103,6 +105,14 @@ export function HierarchicalCard({
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 animate-fade-in">
+                    {onAssign && (
+                      <button
+                        onClick={() => { onAssign(); setMenuOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+                      >
+                        <span className="text-[10px]">👤</span> Assign
+                      </button>
+                    )}
                     {onEdit && (
                       <button
                         onClick={() => { onEdit(); setMenuOpen(false); }}

@@ -4,6 +4,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 import { MainLayout } from '../layouts/MainLayout';
 import { LoginPage } from '../pages/LoginPage';
 
@@ -25,6 +26,14 @@ import { ActivitiesListPage } from '../pages/new/ActivitiesListPage';
 import { ThisWeekPage } from '../pages/new/ThisWeekPage';
 import { FamilyPage } from '../pages/admin/Family/FamilyPage';
 import { EmailLogsPage } from '../pages/admin/EmailLogsPage';
+import { AdminTemplatesPage } from '../pages/admin/AdminTemplatesPage';
+import { SyllabusGeneratorPage } from '../pages/new/SyllabusGeneratorPage';
+import { OnboardingWizardPage } from '../pages/onboarding/OnboardingWizardPage';
+import { isOnboardingComplete } from '../context/OnboardingContext';
+import { ChatPage } from '../pages/ChatPage';
+import { SubjectLibraryPage } from '../pages/new/SubjectLibraryPage';
+import { LearningPathPage } from '../pages/new/LearningPathPage';
+import { LessonPage } from '../pages/new/LessonPage';
 
 // ── Full-screen loading while resolving Supabase session ──────
 function SessionLoader() {
@@ -54,10 +63,29 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return isAdmin ? <>{children}</> : <Navigate to="/" replace />;
 }
 
-/** Redirect admin users away from student-only routes */
+/** Redirect student-only routes away from admin */
 function StudentRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
   return !isAdmin ? <>{children}</> : <Navigate to="/" replace />;
+}
+
+/**
+ * Redirect admin users who have no children and haven't finished onboarding.
+ * Uses real data (rawChildren) instead of a timestamp window so it works
+ * for both brand-new sign-ups and existing accounts that skipped setup.
+ * Co-parents (non-admin) are never redirected.
+ */
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { isAdmin, authLoading } = useAuth();
+  const { rawChildren, loading: dataLoading } = useData();
+
+  // Don't redirect while session or data is still loading
+  if (authLoading || dataLoading) return <>{children}</>;
+
+  if (isAdmin && rawChildren.length === 0 && !isOnboardingComplete()) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <>{children}</>;
 }
 
 // ── Routes ────────────────────────────────────────────────────
@@ -76,25 +104,34 @@ export function AppRoutes() {
         }
       >
         {/* Shared */}
-        <Route index element={<DashboardPage />} />
+        <Route index element={<OnboardingGuard><DashboardPage /></OnboardingGuard>} />
         <Route path="subjects" element={<SubjectsPage />} />
         <Route path="subjects/:subjectId/topics" element={<TopicsPage />} />
         <Route path="topics/:topicId/tasks" element={<TasksListPage />} />
         <Route path="tasks/:taskId/activities" element={<ActivitiesListPage />} />
+        <Route path="chat" element={<ChatPage />} />
+        <Route path="library" element={<SubjectLibraryPage />} />
+        <Route path="learning-path" element={<LearningPathPage />} />
+        <Route path="lesson/:taskId" element={<LessonPage />} />
 
         {/* Admin-only / Management */}
         <Route path="kids" element={<AdminRoute><KidsPage /></AdminRoute>} />
         <Route path="kids/:kidId" element={<AdminRoute><KidProfilePage /></AdminRoute>} />
         <Route path="topics" element={<AdminRoute><TopicsPage /></AdminRoute>} />
         <Route path="activities" element={<AdminRoute><ActivitiesPage /></AdminRoute>} />
+        <Route path="syllabus-generator" element={<AdminRoute><SyllabusGeneratorPage /></AdminRoute>} />
         {<Route path="tasks" element={<AdminRoute><TaskManagementPage /></AdminRoute>} />}
         {<Route path="scheduled" element={<AdminRoute><TaskManagementPage defaultTab="scheduled" /></AdminRoute>} />}
         {<Route path="archived" element={<AdminRoute><TaskManagementPage defaultTab="archived" /></AdminRoute>} />}
         <Route path="this-week" element={<ThisWeekPage />} />
+        <Route path="admin/templates" element={<AdminRoute><AdminTemplatesPage /></AdminRoute>} />
         <Route path="reports" element={<AdminRoute><ReportsPage /></AdminRoute>} />
         <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
         <Route path="system/emails" element={<AdminRoute><EmailLogsPage /></AdminRoute>} />
         <Route path="family" element={<AdminRoute><FamilyPage /></AdminRoute>} />
+
+        {/* Onboarding wizard */}
+        <Route path="onboarding" element={<OnboardingWizardPage />} />
 
         {/* Student-only */}
         <Route path="my-learning" element={<StudentRoute><MyLearningPage /></StudentRoute>} />

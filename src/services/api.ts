@@ -1,7 +1,7 @@
 import type { LearningTask, Lesson } from '../types';
 import { supabase } from './supabase';
 
-async function request<T>(url: string, options: RequestInit): Promise<T> {
+export async function request<T>(url: string, options: RequestInit): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
 

@@ -2,6 +2,7 @@
 // components/ui/ConfirmModal.tsx — Replaces window.confirm()
 // ============================================================
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
@@ -35,7 +36,7 @@ export function ConfirmModal({
       />
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="bg-white w-full max-w-sm rounded-3xl shadow-2xl pointer-events-auto p-6 animate-fade-in"
+          className="bg-white w-full max-w-sm rounded-3xl shadow-2xl pointer-events-auto p-6 animate-fade-in max-h-screen overflow-y-auto"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="confirm-title"
@@ -84,6 +85,7 @@ export function ConfirmModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

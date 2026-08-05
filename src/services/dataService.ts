@@ -12,6 +12,7 @@ import type {
   DbTopic,
   LearningStage,
 } from '../types/database';
+import { fetchSubjects as enrollmentFetchSubjects } from './curriculumService';
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -152,27 +153,28 @@ export async function updateChild(id: string, payload: Partial<DbChild>): Promis
 
 // ── Subjects ─────────────────────────────────────────────────
 
+/** Fetch subjects enrolled for a child via child_subjects junction table */
 export async function fetchSubjects(childId?: string): Promise<DbSubject[]> {
-  let query = supabase
-    .from('subjects')
-    .select('*')
-    .eq('is_active', true)
-    .order('order_index', { ascending: true });
-  if (childId) query = query.eq('child_id', childId);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as DbSubject[];
+  return enrollmentFetchSubjects(childId);
 }
 
 export async function createSubject(payload: {
-  child_id: string;
   name: string;
   description?: string;
   color?: string;
 }): Promise<DbSubject> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
   const { data, error } = await supabase
     .from('subjects')
-    .insert({ ...payload, color: payload.color ?? '#8b5cf6' })
+    .insert({
+      name: payload.name,
+      description: payload.description ?? null,
+      color: payload.color ?? '#8b5cf6',
+      created_by: user.id,
+      is_global: false,
+      is_active: true,
+    })
     .select('*')
     .single();
   if (error) throw error;
@@ -242,13 +244,48 @@ export async function fetchTaskProgress(childId?: string): Promise<DbTaskProgres
  * Returns raw DB rows — DataContext will transform them.
  */
 export async function fetchAllAppData() {
-  const [children, subjects, topics, tasks, taskProgress] = await Promise.all([
-    fetchChildren(),
-    fetchSubjects(),
-    fetchTopics(),
-    fetchTasks(),
-    fetchTaskProgress(),
-  ]);
+  const children = await fetchChildren();
+  const childIds = children.map(c => c.id);
+
+  if (childIds.length === 0) {
+    return { children: [], subjects: [], topics: [], tasks: [], taskProgress: [] };
+  }
+
+  // Fetch only enrolled subjects and topics for these children
+  const { data: childSubjectsData } = await supabase
+    .from('child_subjects')
+    .select('subjects(*)')
+    .in('child_id', childIds)
+    .eq('is_active', true);
+
+  const { data: childTopicsData } = await supabase
+    .from('child_topics')
+    .select('topics(*)')
+    .in('child_id', childIds)
+    .eq('is_active', true);
+
+  const subjects = Array.from(
+    new Map((childSubjectsData ?? []).map((cs: any) => [cs.subjects.id, cs.subjects])).values()
+  ) as DbSubject[];
+
+  const topics = Array.from(
+    new Map((childTopicsData ?? []).map((ct: any) => [ct.topics.id, ct.topics])).values()
+  ) as DbTopic[];
+
+  // Fetch tasks only for these enrolled topics
+  const topicIds = topics.map(t => t.id);
+  const tasks: DbTask[] = [];
+  if (topicIds.length > 0) {
+    const { data } = await supabase
+      .from('tasks')
+      .select('*')
+      .in('topic_id', topicIds)
+      .eq('is_active', true);
+    if (data) tasks.push(...(data as DbTask[]));
+  }
+
+  const taskProgress = await fetchTaskProgress();
+
   return { children, subjects, topics, tasks, taskProgress };
 }
 

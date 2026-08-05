@@ -2,13 +2,13 @@
 // SubjectsPage — Production-ready with real progress, ConfirmModal,
 // toast, debounced search, child_id from auth, and document title
 // ============================================================
-import { BookOpen, Search, BarChart2, Hash } from 'lucide-react';
+import { BookOpen, Search, BarChart2, Hash, Wand2, LibraryBig, Plus } from 'lucide-react';
+import { supabase } from '../../services/supabase';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackButton } from '../../components/ui/BackButton';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
-import { FloatingAddButton } from '../../components/curriculum/FloatingAddButton';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,6 +16,7 @@ import { fetchSubjects, createItem, updateItem, deleteItem } from '../../service
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../store/useToastStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { useDebounce } from '../../hooks/useDebounce';
 import { subjectEmoji, normalizeDifficulty } from '../../utils/string';
@@ -30,8 +31,11 @@ const SUBJECT_FIELDS: FormField[] = [
 export function SubjectsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { subjects: appSubjects, rawTopics, rawTasks, taskProgress } = useData();
+  const { subjects: appSubjects, rawTopics, rawTasks, taskProgress, rawChildren } = useData();
+  const { selectedChildId } = useSettingsStore();
   const toast = useToast();
+
+  const childId = selectedChildId || rawChildren?.[0]?.id || '';
 
   useDocumentTitle('Subjects');
 
@@ -44,10 +48,11 @@ export function SubjectsPage() {
   const [confirmId,       setConfirmId]       = useState<string | null>(null);
   const [confirmLoading,  setConfirmLoading]  = useState(false);
   const [visibleCount,    setVisibleCount]    = useState(50);
+  const [generatingAi,    setGeneratingAi]    = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
-  useEffect(() => { loadSubjects(); }, []);
+  useEffect(() => { loadSubjects(); }, [childId]);
 
   // Reset pagination on search
   useEffect(() => {
@@ -58,8 +63,12 @@ export function SubjectsPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchSubjects();
-      setSubjects(data);
+      if (!childId) {
+        setSubjects([]);
+      } else {
+        const data = await fetchSubjects(childId);
+        setSubjects(data);
+      }
     } catch (err) {
       setError('Failed to load subjects.');
     } finally {
@@ -74,16 +83,20 @@ export function SubjectsPage() {
         setSubjects(subjects.map(s => s.id === updated.id ? updated : s));
         toast.success(`"${updated.name}" updated`);
       } else {
-        // Attach child_id from the first child the admin manages (or the user themselves)
-        const childId = user?.id ?? '';
-        const created = await createItem<DbSubject>('subjects', {
-          ...data,
-          child_id:    childId,
-          is_active:   true,
-          order_index: subjects.length,
-        });
+        // Create subject in the global library and enroll the first child
+        const childId = rawChildren?.[0]?.id ?? '';
+        if (!childId) {
+          toast.error('No child profile found. Please create a child profile first.');
+          return;
+        }
+
+        const { createSubjectAndEnroll } = await import('../../services/curriculumService');
+        const created = await createSubjectAndEnroll(
+          { name: data.name, description: data.description, color: data.color },
+          childId
+        );
         setSubjects([...subjects, created]);
-        toast.success(`"${created.name}" created!`);
+        toast.success(`"${created.name}" created and enrolled!`);
       }
     } catch {
       toast.error('Failed to save subject. Please try again.');
@@ -102,6 +115,42 @@ export function SubjectsPage() {
     } finally {
       setConfirmLoading(false);
       setConfirmId(null);
+    }
+  }
+
+  async function handleGenerateAi() {
+    if (!editingSubject) return;
+    setGeneratingAi(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/ai/generateTopics', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': session ? `Bearer ${session.access_token}` : ''
+        },
+        body: JSON.stringify({
+          subject_id: editingSubject.id,
+          subject_name: editingSubject.name,
+          child_id: editingSubject.child_id,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to generate content');
+      }
+
+      toast.success('AI successfully generated topics & tasks!');
+      // Reload subjects or just close
+      setModalOpen(false);
+      setEditingSubject(null);
+      // Let's trigger a full data reload (can just window.location.reload for simplicity, or re-fetch)
+      window.location.reload(); 
+    } catch (err: any) {
+      toast.error(err.message || 'Error generating AI content');
+    } finally {
+      setGeneratingAi(false);
     }
   }
 
@@ -147,17 +196,35 @@ export function SubjectsPage() {
   );
 
   return (
-    <div className="animate-fade-in pb-4">
+    <div className="animate-fade-in" style={{ background: '#f4f6f8', margin: '-20px -16px', padding: '20px 16px 100px', minHeight: '100vh' }}>
       <div className="mb-2">
         <BackButton />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">Curriculum</h1>
-          <p className="text-sm text-gray-400">
-            {subjects.length} subject{subjects.length !== 1 ? 's' : ''} · Manage learning areas
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">Curriculum</h1>
+            <p className="text-sm text-gray-400">
+              {subjects.length} subject{subjects.length !== 1 ? 's' : ''} · Manage learning areas
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/library')}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 text-sm font-semibold rounded-xl transition-colors hidden sm:flex"
+            >
+              <LibraryBig size={16} />
+              Browse Library
+            </button>
+            <button
+              onClick={() => { setEditingSubject(null); setModalOpen(true); }}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+            >
+              <Plus size={16} />
+              Add Subject
+            </button>
+          </div>
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -222,10 +289,6 @@ export function SubjectsPage() {
         </>
       )}
 
-      <FloatingAddButton
-        onClick={() => { setEditingSubject(null); setModalOpen(true); }}
-        label="Add Subject"
-      />
 
       <CurriculumFormModal
         isOpen={modalOpen}
@@ -234,6 +297,12 @@ export function SubjectsPage() {
         fields={SUBJECT_FIELDS}
         initialData={editingSubject}
         onSubmit={handleSubmit}
+        extraActions={editingSubject ? [{
+          label: 'Generate Topics & Tasks with AI',
+          icon: <Wand2 size={16} />,
+          onClick: handleGenerateAi,
+          loading: generatingAi
+        }] : undefined}
       />
 
       <ConfirmModal

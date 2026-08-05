@@ -55,7 +55,7 @@ export interface AppKid {
 
 export interface AppSubject {
   id: string;
-  childId: string;
+  childId: string | null;
   name: string;
   description: string;
   emoji: string;
@@ -173,7 +173,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // ── Transform raw rows → app types ───────────────────────────
 
   const kids: AppKid[] = rawChildren.map((child, i) => {
-    const childSubjects  = rawSubjects.filter((s) => s.child_id === child.id);
+    // For now, assume child has access to all subjects fetched (since fetchAllAppData fetches subjects the child is enrolled in)
+    const childSubjects  = rawSubjects;
     const childProgress  = taskProgress.filter((p) => p.child_id === child.id);
     const completedTasks = childProgress.filter((p) =>
       ['Comfortable', 'Confident'].includes(p.learning_stage)
@@ -213,7 +214,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const progress = computeSubjectProgress(s.id, rawTopics, rawTasks, taskProgress);
     return {
       id:          s.id,
-      childId:     s.child_id,
+      childId:     null, // subjects are now global; enrollment via child_subjects
       name:        s.name,
       description: s.description ?? `Learn about ${s.name}.`,
       emoji:       subjectEmoji(s.name),

@@ -1,5 +1,5 @@
 // ============================================================
-// database.ts — Complete DB types with all missing fields
+// database.ts — Complete DB types reflecting new architecture
 // ============================================================
 
 export type LearningStage =
@@ -10,11 +10,17 @@ export type LearningStage =
   | 'Confident'
   | 'Needs_Practice';
 
+export type EnrollmentSource = 'manual' | 'subject' | 'ai_suggest';
+export type TaskType = 'lesson' | 'quiz' | 'project' | 'reading' | 'worksheet' | 'experiment' | 'discussion';
+export type SubjectType = 'core' | 'elective' | 'enrichment';
+
 // ── Raw DB rows ──────────────────────────────────────────────
 export interface DbProfile {
   id: string;
   display_name: string | null;
+  family_id: string | null;
   is_admin: boolean;
+  preferences: Record<string, any> | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,14 +35,45 @@ export interface DbChild {
   updated_at: string;
 }
 
-export interface DbSubject {
+// ── Enrollment Junction Tables ───────────────────────────────
+
+export interface DbChildSubject {
   id: string;
   child_id: string;
+  subject_id: string;
+  enrolled_at: string;
+  is_active: boolean;
+  custom_order: number;
+}
+
+export interface DbChildTopic {
+  id: string;
+  child_id: string;
+  topic_id: string;
+  enrolled_at: string;
+  is_active: boolean;
+  enrollment_source: EnrollmentSource;
+  custom_order: number;
+  target_completion_date: string | null;
+}
+
+// ── Global Content Tables ────────────────────────────────────
+
+export interface DbSubject {
+  id: string;
   name: string;
   description: string | null;
   color: string;
   order_index: number;
   is_active: boolean;
+  embedding: number[] | null;
+  // New fields (Phase 1)
+  created_by: string | null;
+  is_global: boolean;
+  grade_levels: string[];
+  subject_type: SubjectType;
+  estimated_weeks: number | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +87,14 @@ export interface DbTopic {
   age_group: string | null;
   is_active: boolean;
   order_index: number;
+  embedding: number[] | null;
+  // New fields (Phase 1)
+  learning_objectives: string[] | null;
+  prerequisites: string[] | null;
+  estimated_hours: number | null;
+  bloom_level: string | null;
+  keywords: string[] | null;
+  grade_level_range: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +109,17 @@ export interface DbTask {
   source_type: 'manual' | 'ai_generated';
   order_index: number;
   is_active: boolean;
+  embedding: number[] | null;
+  // New fields (Phase 1)
+  task_type: TaskType;
+  instructions: string | null;
+  parent_guide: string | null;
+  materials_needed: string[] | null;
+  estimated_minutes: number;
+  learning_objective: string | null;
+  assessment_criteria: string | null;
+  resources: Array<{ type: string; url: string; title: string }>;
+  is_assessment: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +137,12 @@ export interface DbTaskProgress {
   repeat_interval: number | null;
   is_scheduled_this_week: boolean;
   is_active: boolean;
+  // New fields (Phase 1)
+  notes: string | null;
+  session_count: number;
+  time_spent_minutes: number;
+  mastery_score: number | null;
+  parent_rating: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -90,10 +152,13 @@ export interface DbActivity {
   task_id: string;
   name: string;
   type: string | null;
-  materials: string | null;   // Added — used in ActivitiesListPage
+  materials: string | null;
   duration_minutes: number | null;
   order_index: number;
   is_active: boolean;
+  // New fields (Phase 1)
+  instructions: string | null;
+  activity_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -113,4 +178,18 @@ export interface DbSystemSetting {
   key: string;
   value: string;
   updated_at: string;
+}
+
+// ── Enriched joined types (for UI usage) ─────────────────────
+
+/** Topic with its parent subject breadcrumb info */
+export interface DbTopicWithBreadcrumb extends DbTopic {
+  subject: Pick<DbSubject, 'id' | 'name' | 'color' | 'emoji'> & { emoji?: string };
+}
+
+/** Task with its full breadcrumb: subject > topic > task */
+export interface DbTaskWithBreadcrumb extends DbTask {
+  topic: Pick<DbTopic, 'id' | 'title'> & {
+    subject: Pick<DbSubject, 'id' | 'name' | 'color'>;
+  };
 }

@@ -13,7 +13,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { StaggerContainer, StaggerItem } from '../../components/motion/MotionWrappers';
 
 import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
-import { TaskDetailsDrawer } from '../../components/tasks/TaskDetailsDrawer';
+import { TaskDetailsDialog } from '../../components/tasks/TaskDetailsDialog';
 import { TaskToastContainer } from '../../components/tasks/TaskToastContainer';
 import { useTaskManagement } from '../../hooks/useTaskManagement';
 import { supabase } from '../../services/supabase';
@@ -229,9 +229,9 @@ export function ThisWeekPage() {
         );
       })()}
 
-      {/* ── Details Drawer ──────────────────────────────────── */}
+      {/* ── Details Dialog ──────────────────────────────────── */}
       {drawerTask && (
-        <TaskDetailsDrawer
+        <TaskDetailsDialog
           task={drawerTask}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}

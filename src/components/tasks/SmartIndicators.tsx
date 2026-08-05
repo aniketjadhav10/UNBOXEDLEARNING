@@ -47,7 +47,7 @@ export function SmartIndicators({ task }: SmartIndicatorsProps) {
   if (indicators.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
+    <div className="flex flex-wrap gap-1.5">
       {indicators.map(({ label, classes, Icon }) => (
         <span
           key={label}

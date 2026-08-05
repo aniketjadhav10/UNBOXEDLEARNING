@@ -56,6 +56,7 @@ interface AuthContextValue {
   user: AppUser | null;
   session: Session | null;
   isAdmin: boolean;
+  isNewUser: boolean; // true for ~5 min after first sign-up
   authLoading: boolean; // true while resolving initial session
   signOut: () => Promise<void>;
   updateProfile: (displayName: string) => Promise<void>;
@@ -133,6 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         isAdmin: user?.role === 'admin',
+        isNewUser: session?.user
+          ? (Date.now() - new Date(session.user.created_at).getTime()) < 5 * 60 * 1000
+          : false,
         authLoading,
         signOut,
         updateProfile,

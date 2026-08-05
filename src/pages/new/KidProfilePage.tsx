@@ -1,13 +1,14 @@
 // Kid Profile Page — real data from DataContext
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Edit3, Star, Trophy, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, Edit3, Star, Trophy, Zap, LibraryBig } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Badge } from '../../components/ui/Badge';
 import { TopicCard } from '../../components/TopicCard';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { TaskAssignmentModal } from '../../components/curriculum/TaskAssignmentModal';
 import { updateItem } from '../../services/curriculumService';
 import { useToast } from '../../store/useToastStore';
 
@@ -40,6 +41,7 @@ export function KidProfilePage() {
   const { kids, subjects, topics, loading, refresh } = useData();
   const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const kid = kids.find((k) => k.id === kidId);
@@ -163,6 +165,20 @@ export function KidProfilePage() {
 
           {tab === 'subjects' && (
             <div className="space-y-3">
+              <div className="flex justify-end gap-2 mb-2">
+                <button
+                  onClick={() => navigate('/library')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition-colors"
+                >
+                  <LibraryBig size={14} /> Browse Library
+                </button>
+                <button
+                  onClick={() => setAssignModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-lg transition-colors"
+                >
+                  <BookOpen size={14} /> Assign Tasks
+                </button>
+              </div>
               {kidSubjects.length === 0
                 ? <p className="text-sm text-gray-400 text-center py-8">No subjects assigned to this child.</p>
                 : kidSubjects.map((s) => (
@@ -214,6 +230,13 @@ export function KidProfilePage() {
         }}
         onSubmit={handleUpdateKid}
         loading={submitting}
+      />
+      
+      <TaskAssignmentModal
+        isOpen={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        defaultChildId={kidId}
+        onAssigned={() => refresh()}
       />
     </div>
   );

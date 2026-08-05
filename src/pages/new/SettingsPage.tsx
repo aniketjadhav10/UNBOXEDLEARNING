@@ -1,13 +1,15 @@
 // ============================================================
 // SettingsPage — Functional settings with persistence via useSettingsStore
 // ============================================================
-import { Bell, Globe, Moon, Palette, RefreshCw, Shield, User } from 'lucide-react';
+import { Bell, Globe, Moon, Palette, RefreshCw, Shield, User, BrainCircuit, MessageSquareOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useToast } from '../../store/useToastStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import { MemoryManagerModal } from '../../components/chat/MemoryManagerModal';
 import { useState } from 'react';
+import { chatService } from '../../services/chatService';
 
 // ── Reusable section/row primitives ──────────────────────────
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -80,6 +82,7 @@ export function SettingsPage() {
   const toast = useToast();
   
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const PROFILE_FIELDS: FormField[] = [
@@ -112,6 +115,16 @@ export function SettingsPage() {
     toast.info('Signed out successfully');
   }
 
+  async function handleClearChatHistory() {
+    if (!window.confirm('Are you sure you want to delete all past conversations? This cannot be undone.')) return;
+    try {
+      await chatService.deleteAllSessions();
+      toast.success('Chat history cleared successfully');
+    } catch (err) {
+      toast.error('Failed to clear chat history');
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <div>
@@ -131,6 +144,21 @@ export function SettingsPage() {
           label="Password"
           desc="Change your account password"
           control={<button onClick={() => toast.info('Password reset instructions sent to your email.')} className="text-xs text-violet-600 font-semibold hover:text-violet-800">Change</button>}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="AI Assistant">
+        <SettingsRow
+          icon={BrainCircuit}
+          label="AI Memories"
+          desc="Manage the facts the AI has learned about you"
+          control={<button onClick={() => setMemoryModalOpen(true)} className="text-xs text-violet-600 font-semibold hover:text-violet-800">Manage</button>}
+        />
+        <SettingsRow
+          icon={MessageSquareOff}
+          label="Clear Chat History"
+          desc="Delete all past conversation transcripts"
+          control={<button onClick={handleClearChatHistory} className="text-xs text-red-500 font-semibold hover:text-red-700">Clear</button>}
         />
       </SettingsSection>
 
@@ -177,11 +205,11 @@ export function SettingsPage() {
         <SettingsRow
           icon={Moon}
           label="Dark Mode"
-          desc="Switch to dark theme (coming soon)"
+          desc="Switch to dark theme"
           control={
             <Toggle
               value={darkMode}
-              onChange={(v) => { setDarkMode(v); toast.info('Dark mode coming soon!'); }}
+              onChange={(v) => { setDarkMode(v); toast.success(v ? 'Dark mode enabled' : 'Dark mode disabled'); }}
               ariaLabel="Toggle dark mode"
             />
           }
@@ -246,6 +274,11 @@ export function SettingsPage() {
         initialData={{ name: user?.name }}
         onSubmit={handleUpdateProfile}
         loading={submitting}
+      />
+
+      <MemoryManagerModal 
+        isOpen={memoryModalOpen}
+        onClose={() => setMemoryModalOpen(false)}
       />
     </div>
   );
