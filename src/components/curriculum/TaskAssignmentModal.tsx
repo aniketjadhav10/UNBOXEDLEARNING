@@ -155,8 +155,8 @@ export function TaskAssignmentModal({
     return map;
   }, [rawTasks]);
 
-  const globalSubjects = useMemo(() => rawSubjects.filter((s) => s.child_id === null), [rawSubjects]);
-  const familySubjects = useMemo(() => rawSubjects.filter((s) => s.child_id !== null), [rawSubjects]);
+  const globalSubjects = useMemo(() => rawSubjects.filter((s) => s.is_global), [rawSubjects]);
+  const familySubjects = useMemo(() => rawSubjects.filter((s) => !s.is_global), [rawSubjects]);
 
   const totalSelected = tree.selectedTasks.size;
 

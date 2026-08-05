@@ -165,7 +165,7 @@ export async function fetchTopicsWithBreadcrumb(childId: string): Promise<DbTopi
         subject: topic.subjects,
       } as DbTopicWithBreadcrumb;
     })
-    .filter(Boolean);
+    .filter((t): t is DbTopicWithBreadcrumb => t !== null);
 }
 
 export async function fetchTasksByTopic(topicId: string): Promise<DbTask[]> {

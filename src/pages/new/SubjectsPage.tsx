@@ -132,7 +132,7 @@ export function SubjectsPage() {
         body: JSON.stringify({
           subject_id: editingSubject.id,
           subject_name: editingSubject.name,
-          child_id: editingSubject.child_id,
+          child_id: childId,
         }),
       });
 

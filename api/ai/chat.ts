@@ -197,7 +197,7 @@ Respond nicely and concisely.`;
              console.log(`[chat] Tool called: save_user_memory. Fact: ${fact}`);
              
              if (fact) {
-                const factEmbedding = await getEmbedding(fact);
+                const factEmbedding = await getEmbedding(fact as string);
                 await supabase.from('user_memories').insert({
                    user_id: user.id,
                    content: fact,
@@ -215,7 +215,7 @@ Respond nicely and concisely.`;
              let searchResults = "No results found.";
              
              if (query) {
-                const qEmbedding = await getEmbedding(query);
+                const qEmbedding = await getEmbedding(query as string);
                 if (qEmbedding) {
                    // Search tasks using vector similarity
                    const { data: matchedTasks } = await supabase.rpc('match_tasks', {

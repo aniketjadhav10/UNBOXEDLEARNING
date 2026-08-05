@@ -45,6 +45,10 @@ Each topic must include:
 - **description** – What the child will learn and what skills they will develop
 - **difficulty_level** – One of: Beginner | Intermediate | Advanced
 - **age_group** – The provided age group: "[AgeGroup]"
+- **learning_objectives** – An array of 2-3 specific learning outcomes
+- **estimated_hours** – Number of hours estimated to complete this topic (e.g., 2.5)
+- **bloom_level** – Bloom's taxonomy level
+- **keywords** – Array of 3-5 relevant keywords
 
 ---
 
@@ -61,7 +65,18 @@ Each task must:
 
 Each task must include:
 - **title** – Short and action-oriented (3–8 words)
-- **description** – Concise, actionable instruction explaining what the learner does
+- **description** – Concise, actionable instruction (1–2 sentences) explaining exactly what the learner does
+- **task_type** – One of: 'lesson', 'quiz', 'project', 'reading', 'worksheet', 'experiment', 'discussion'
+- **instructions** – Step-by-step numbered instructions for teaching this task. (Use newline characters \\n to separate steps).
+- **parent_guide** – Tips and advice for the parent/teacher facilitating the lesson.
+- **materials_needed** – An array of strings representing items needed.
+- **estimated_minutes** – Integer representing estimated time to complete (e.g., 30).
+- **learning_objective** – The specific goal of this task.
+- **assessment_criteria** – A short explanation of how the parent will know the child has mastered this task.
+- **resources** – An array of external resource objects, each containing:
+  - \`type\`: 'video', 'article', 'pdf', or 'link'.
+  - \`url\`: A realistic placeholder URL.
+  - \`title\`: Title of the resource.
 
 ---
 
@@ -99,10 +114,24 @@ Return ONLY valid JSON — no markdown, no comments, no extra text.
       "description": "",
       "difficulty_level": "Beginner",
       "age_group": "[AgeGroup]",
+      "learning_objectives": [""],
+      "estimated_hours": 2.5,
+      "bloom_level": "understand",
+      "keywords": [""],
       "tasks": [
         {
           "title": "",
-          "description": ""
+          "description": "",
+          "task_type": "lesson",
+          "instructions": "1. Do this.\\n2. Do that.",
+          "parent_guide": "",
+          "materials_needed": [""],
+          "estimated_minutes": 30,
+          "learning_objective": "",
+          "assessment_criteria": "",
+          "resources": [
+            { "type": "video", "url": "...", "title": "..." }
+          ]
         }
       ]
     }

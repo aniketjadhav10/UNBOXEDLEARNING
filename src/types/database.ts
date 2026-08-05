@@ -184,7 +184,10 @@ export interface DbSystemSetting {
 
 /** Topic with its parent subject breadcrumb info */
 export interface DbTopicWithBreadcrumb extends DbTopic {
-  subject: Pick<DbSubject, 'id' | 'name' | 'color' | 'emoji'> & { emoji?: string };
+  subject: Pick<DbSubject, 'id' | 'name' | 'color'> & { emoji?: string };
+  custom_order?: number;
+  enrollment_source?: EnrollmentSource;
+  target_completion_date?: string | null;
 }
 
 /** Task with its full breadcrumb: subject > topic > task */

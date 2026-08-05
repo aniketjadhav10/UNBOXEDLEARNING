@@ -13,7 +13,18 @@ interface TasksResult {
   topic: string;
   subject: string;
   age_group: string;
-  tasks: Array<{ title: string; description: string }>;
+  tasks: Array<{
+    title: string;
+    description: string;
+    task_type?: string;
+    instructions?: string;
+    parent_guide?: string;
+    materials_needed?: string[];
+    estimated_minutes?: number;
+    learning_objective?: string;
+    assessment_criteria?: string;
+    resources?: Array<{ type: string; url: string; title: string }>;
+  }>;
 }
 
 interface ActionSummary {
@@ -76,6 +87,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: task.title,
         description: task.description,
         orderIndex: orderIndex++,
+        taskType: task.task_type,
+        instructions: task.instructions,
+        parentGuide: task.parent_guide,
+        materialsNeeded: task.materials_needed,
+        estimatedMinutes: task.estimated_minutes,
+        learningObjective: task.learning_objective,
+        assessmentCriteria: task.assessment_criteria,
+        resources: task.resources,
       });
 
       tally(taskSummary, taskResult.action);

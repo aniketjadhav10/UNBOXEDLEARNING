@@ -2,7 +2,8 @@ node_modules
 dist
 .vercel
 .env
-.env.*
+.env.local
+.env.example
 *.tsbuildinfo
 npm-debug.log*
 pnpm-debug.log*

@@ -22,6 +22,7 @@ import {
 } from '../../services/curriculumService';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../store/useToastStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { useDebounce } from '../../hooks/useDebounce';
 import { normalizeDifficulty } from '../../utils/string';
@@ -47,8 +48,10 @@ const TOPIC_FIELDS: FormField[] = [
 export function TopicsPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
-  const { rawTasks, taskProgress, rawSubjects } = useData();
+  const { rawTasks, taskProgress, rawSubjects, kids } = useData();
   const toast = useToast();
+  const { selectedChildId } = useSettingsStore();
+  const childId = selectedChildId || kids?.[0]?.id || '';
 
   const [subject,        setSubject]        = useState<DbSubject | null>(null);
   const [topics,         setTopics]         = useState<DbTopic[]>([]);
@@ -162,7 +165,7 @@ export function TopicsPage() {
           topic_id: editingTopic.id,
           topic_name: editingTopic.title,
           subject_name: subject?.name || '',
-          child_id: subject?.child_id || '',
+          child_id: childId,
         }),
       });
 

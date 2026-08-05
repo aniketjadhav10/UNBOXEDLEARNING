@@ -26,6 +26,8 @@ import { useToast } from '../../store/useToastStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { DbTopic, DbSubject, DbTask, DbActivity } from '../../types/database';
+import { useData } from '../../context/DataContext';
+import { useSettingsStore } from '../../store/useSettingsStore';
 
 const ACTIVITY_FIELDS: FormField[] = [
   { name: 'name',      label: 'Activity Name',    type: 'text',     placeholder: 'e.g. Interactive Quiz',  required: true },
@@ -44,6 +46,9 @@ const ACTIVITY_FIELDS: FormField[] = [
 export function ActivitiesListPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const toast = useToast();
+  const { kids } = useData();
+  const { selectedChildId } = useSettingsStore();
+  const childId = selectedChildId || kids?.[0]?.id || '';
 
   const [task,       setTask]       = useState<DbTask | null>(null);
   const [topic,      setTopic]      = useState<DbTopic | null>(null);
@@ -178,7 +183,7 @@ export function ActivitiesListPage() {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {subject?.child_id && taskId && (
+          {!subject?.is_global && taskId && (
             <button
               onClick={() => setScheduleModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-violet-50 text-violet-700 hover:bg-violet-100 font-semibold text-sm rounded-2xl transition-colors shadow-sm shrink-0"
@@ -269,12 +274,12 @@ export function ActivitiesListPage() {
         danger
       />
 
-      {taskId && subject?.child_id && (
+      {taskId && !subject?.is_global && childId && (
         <TaskScheduleModal
           isOpen={scheduleModalOpen}
           onClose={() => setScheduleModalOpen(false)}
           taskId={taskId}
-          childId={subject.child_id}
+          childId={childId}
           onSaved={() => {
             toast.success('Task scheduling updated!');
           }}

@@ -17,7 +17,22 @@ interface TopicsResult {
     description: string;
     difficulty_level: string;
     age_group: string;
-    tasks: Array<{ title: string; description: string }>;
+    learning_objectives?: string[];
+    estimated_hours?: number;
+    bloom_level?: string;
+    keywords?: string[];
+    tasks: Array<{
+      title: string;
+      description: string;
+      task_type?: string;
+      instructions?: string;
+      parent_guide?: string;
+      materials_needed?: string[];
+      estimated_minutes?: number;
+      learning_objective?: string;
+      assessment_criteria?: string;
+      resources?: Array<{ type: string; url: string; title: string }>;
+    }>;
   }>;
 }
 
@@ -77,6 +92,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         difficultyLevel: t.difficulty_level || 'Beginner',
         ageGroup: t.age_group || ageGroup,
         orderIndex: topicOrderIndex++,
+        learningObjectives: t.learning_objectives,
+        estimatedHours: t.estimated_hours,
+        bloomLevel: t.bloom_level,
+        keywords: t.keywords,
       });
       tally(topicSummary, topicResult.action);
       processedTopics.push({ id: topicResult.id, title: t.title, action: topicResult.action });
@@ -88,6 +107,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           name: task.title,
           description: task.description,
           orderIndex: taskOrderIndex++,
+          taskType: task.task_type,
+          instructions: task.instructions,
+          parentGuide: task.parent_guide,
+          materialsNeeded: task.materials_needed,
+          estimatedMinutes: task.estimated_minutes,
+          learningObjective: task.learning_objective,
+          assessmentCriteria: task.assessment_criteria,
+          resources: task.resources,
         });
         tally(taskSummary, taskResult.action);
         processedTasks.push({ id: taskResult.id, name: task.title, action: taskResult.action, isNew: taskResult.isNew });

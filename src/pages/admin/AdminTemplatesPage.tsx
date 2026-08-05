@@ -10,14 +10,14 @@ import { CurriculumFormModal, type FormField } from '../../components/curriculum
 const SUBJECT_FIELDS: FormField[] = [
   { name: 'name', label: 'Template Name', type: 'text', placeholder: 'e.g. Basic Mathematics', required: true },
   { name: 'description', label: 'Description', type: 'textarea', placeholder: 'Brief overview...' },
-  { name: 'color', label: 'Color Hex', type: 'color' },
+  { name: 'color', label: 'Color Hex', type: 'text' },
 ];
 
 export function AdminTemplatesPage() {
   const { rawSubjects, rawTopics, rawTasks, refresh } = useData();
   const toast = useToast();
 
-  const globalSubjects = rawSubjects.filter(s => s.child_id === null);
+  const globalSubjects = rawSubjects.filter(s => s.is_global);
 
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [submittingManual, setSubmittingManual] = useState(false);
@@ -31,7 +31,7 @@ export function AdminTemplatesPage() {
     try {
       await createItem('subjects', {
         ...data,
-        child_id: null,
+        is_global: true,
         order_index: globalSubjects.length,
         is_active: true,
       });
