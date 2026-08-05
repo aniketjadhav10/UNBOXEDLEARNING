@@ -442,5 +442,5 @@ async function fetchRow(
     console.warn(`[fetchRow] Failed to fetch ${table} id=${id}:`, error.message);
     return null;
   }
-  return data as Record<string, unknown> | null;
+  return data as unknown as Record<string, unknown> | null;
 }
