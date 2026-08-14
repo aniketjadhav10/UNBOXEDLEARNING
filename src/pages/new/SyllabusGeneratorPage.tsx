@@ -13,6 +13,9 @@ export function SyllabusGeneratorPage() {
   const [textInput, setTextInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [age, setAge] = useState<number>(10);
+  const [skillLevel, setSkillLevel] = useState<string>('Beginner');
+  const [targetGrade, setTargetGrade] = useState<string>('None');
+  const [isGlobal, setIsGlobal] = useState<boolean>(true);
   const [topicsCount, setTopicsCount] = useState<number>(5);
   const [tasksPerTopic, setTasksPerTopic] = useState<number>(3);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,6 +54,9 @@ export function SyllabusGeneratorPage() {
         body: JSON.stringify({
           sourceText,
           age,
+          skillLevel,
+          targetGrade: targetGrade === 'None' ? null : targetGrade,
+          isGlobal,
           topicsCount,
           tasksPerTopic,
           childId: kids[0]?.id
@@ -224,6 +230,69 @@ export function SyllabusGeneratorPage() {
               onChange={(e) => setTasksPerTopic(parseInt(e.target.value) || 1)}
               className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
             />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Skill Level
+            </label>
+            <select
+              value={skillLevel}
+              onChange={(e) => setSkillLevel(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+            >
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Align with Standard Grade? (Optional)
+            </label>
+            <select
+              value={targetGrade}
+              onChange={(e) => setTargetGrade(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+            >
+              <option value="None">No standard alignment</option>
+              <option value="Preschool">Preschool</option>
+              <option value="JKG">JKG</option>
+              <option value="LKG">LKG</option>
+              <option value="UKG">UKG</option>
+              <option value="Grade 1">Grade 1</option>
+              <option value="Grade 2">Grade 2</option>
+              <option value="Grade 3">Grade 3</option>
+              <option value="Grade 4">Grade 4</option>
+              <option value="Grade 5">Grade 5</option>
+              <option value="Grade 6">Grade 6</option>
+              <option value="Grade 7">Grade 7</option>
+              <option value="Grade 8">Grade 8</option>
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-8 p-4 bg-violet-50 border border-violet-100 rounded-xl flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="isGlobal"
+            checked={isGlobal}
+            onChange={(e) => setIsGlobal(e.target.checked)}
+            className="mt-1 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 cursor-pointer"
+          />
+          <div>
+            <label htmlFor="isGlobal" className="block text-sm font-bold text-violet-900 cursor-pointer">
+              Share this syllabus with the community?
+            </label>
+            <p className="text-xs text-violet-700 mt-1">
+              If checked, this syllabus will be added to the Global Library so other homeschooling families can benefit from it.
+            </p>
           </div>
         </div>
 

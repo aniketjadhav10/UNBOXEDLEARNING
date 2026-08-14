@@ -127,6 +127,40 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateProgress }: TaskDetai
             <InterestLevelIndicator level={progress?.interest_level ?? 3} size="md" />
           </div>
 
+          {/* AI / Parent Enhancements */}
+          {(task.learning_objective || task.parent_guide || (task.materials_needed && task.materials_needed.length > 0)) && (
+            <div className="bg-white border border-violet-100 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-violet-50/50 px-4 py-2 border-b border-violet-100 flex items-center gap-2">
+                <BookOpen size={14} className="text-violet-600" />
+                <span className="text-xs font-bold text-violet-800 uppercase tracking-wider">Parent's Corner</span>
+              </div>
+              <div className="p-4 space-y-4">
+                {task.learning_objective && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Learning Objective</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{task.learning_objective}</p>
+                  </div>
+                )}
+                {task.parent_guide && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">How to Teach / Assess</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{task.parent_guide}</p>
+                  </div>
+                )}
+                {task.materials_needed && task.materials_needed.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Materials Needed</p>
+                    <ul className="list-disc list-inside text-sm text-gray-700 space-y-0.5">
+                      {task.materials_needed.map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3">
             

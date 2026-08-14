@@ -22,6 +22,9 @@ export interface AppUser {
   role: 'admin' | 'student';
   avatarInitials: string;
   avatarColor: string;
+  isApproved: boolean;
+  isSuperAdmin: boolean;
+  isOnboarded: boolean;
 }
 
 function getInitials(name: string): string {
@@ -36,6 +39,9 @@ function getInitials(name: string): string {
 function mapUser(
   su: SupabaseUser,
   isAdmin: boolean,
+  isApproved: boolean,
+  isSuperAdmin: boolean,
+  isOnboarded: boolean,
   displayName?: string | null,
 ): AppUser {
   const name = displayName?.trim() || su.email?.split('@')[0] || 'User';
@@ -48,6 +54,9 @@ function mapUser(
     avatarColor: isAdmin
       ? 'from-violet-500 to-purple-600'
       : 'from-pink-400 to-rose-500',
+    isApproved,
+    isSuperAdmin,
+    isOnboarded,
   };
 }
 
@@ -56,10 +65,14 @@ interface AuthContextValue {
   user: AppUser | null;
   session: Session | null;
   isAdmin: boolean;
+  isApproved: boolean;
+  isSuperAdmin: boolean;
+  isOnboarded: boolean;
   isNewUser: boolean; // true for ~5 min after first sign-up
   authLoading: boolean; // true while resolving initial session
   signOut: () => Promise<void>;
   updateProfile: (displayName: string) => Promise<void>;
+  markOnboardedLocally: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -75,13 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('display_name, is_admin')
+        .select('display_name, is_admin, is_approved, is_super_admin, is_onboarded')
         .eq('id', su.id)
         .single();
-      setUser(mapUser(su, data?.is_admin ?? false, data?.display_name));
+      setUser(mapUser(su, data?.is_admin ?? false, data?.is_approved ?? false, data?.is_super_admin ?? false, data?.is_onboarded ?? false, data?.display_name));
     } catch {
-      // Profile may not exist yet — default to non-admin
-      setUser(mapUser(su, false));
+      // Profile may not exist yet — default to non-admin, non-approved, non-onboarded
+      setUser(mapUser(su, false, false, false, false));
     }
   }, []);
 
@@ -128,18 +141,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const markOnboardedLocally = useCallback(() => {
+    if (user) {
+      setUser({ ...user, isOnboarded: true });
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
         isAdmin: user?.role === 'admin',
+        isApproved: user?.isApproved ?? false,
+        isSuperAdmin: user?.isSuperAdmin ?? false,
+        isOnboarded: user?.isOnboarded ?? false,
         isNewUser: session?.user
           ? (Date.now() - new Date(session.user.created_at).getTime()) < 5 * 60 * 1000
           : false,
         authLoading,
         signOut,
         updateProfile,
+        markOnboardedLocally,
       }}
     >
       {children}

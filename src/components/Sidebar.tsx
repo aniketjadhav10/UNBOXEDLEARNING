@@ -21,6 +21,7 @@ import {
   Zap,
   Sparkles,
   LibraryBig,
+  ShieldCheck,
 } from 'lucide-react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -157,13 +158,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { isAdmin, signOut } = useAuth();
+  const { isAdmin, isSuperAdmin, signOut } = useAuth();
   const { kids } = useData();
   const navigate = useNavigate();
   const location = useLocation();
 
   const navItems = useMemo(() => {
-    let items = isAdmin ? ADMIN_NAV : STUDENT_NAV;
+    let items = isAdmin ? [...ADMIN_NAV] : [...STUDENT_NAV];
+    
+    // Deep clone to safely mutate
+    items = items.map(item => ({ 
+      ...item, 
+      subItems: item.subItems ? [...item.subItems] : undefined 
+    }));
+
     if (isAdmin && kids.length <= 1) {
       items = items.map(group => {
         if (group.subItems) {
@@ -175,8 +183,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         return group.label !== 'Kids' ? group : null;
       }).filter(Boolean) as NavItem[];
     }
+
+    if (isSuperAdmin) {
+      const adminGroup = items.find(g => g.label === 'Administration');
+      if (adminGroup && adminGroup.subItems) {
+        // Insert User Approvals right after Kids
+        const kidsIndex = adminGroup.subItems.findIndex(i => i.label === 'Kids');
+        adminGroup.subItems.splice(kidsIndex + 1, 0, { 
+          label: 'User Approvals', 
+          path: '/admin/approvals', 
+          icon: ShieldCheck 
+        });
+      }
+    }
+    
     return items;
-  }, [isAdmin, kids.length]);
+  }, [isAdmin, isSuperAdmin, kids.length]);
 
   async function handleSignOut() {
     await signOut();

@@ -1,0 +1,296 @@
+{"level":30,"time":1786186224221,"msg":"[chat] Calling Gemini..."}
+{"level":30,"time":1786186324438,"msg":"[generateSyllabus] age=2 topics=5 tasks=3"}
+{"level":30,"time":1786186336039,"msg":"[generateSyllabus] Parsed subject: \"Emotional Literacy\" with 5 topics"}
+{"level":30,"time":1786186337444,"msg":"[findOrCreateSubject] Inserting new subject: \"Emotional Literacy\""}
+{"level":30,"time":1786186338162,"msg":"[findOrCreateTopic] Inserting new topic: \"Introduction to Basic Human Feelings\""}
+{"level":30,"time":1786186338800,"msg":"[findOrCreateTask] Inserting new task: \"Mirror Face Exploration\""}
+{"level":30,"time":1786186339474,"msg":"[findOrCreateTask] Inserting new task: \"Sorting Happy and Sad Photos\""}
+{"level":30,"time":1786186340078,"msg":"[findOrCreateTask] Inserting new task: \"Emotion Storybook Reading\""}
+{"level":30,"time":1786186340640,"msg":"[findOrCreateTopic] Inserting new topic: \"Recognizing Angry and Frustrated States\""}
+{"level":30,"time":1786186341227,"msg":"[findOrCreateTask] Inserting new task: \"The Stomp and Breathe Game\""}
+{"level":30,"time":1786186341793,"msg":"[findOrCreateTask] Inserting new task: \"Matching Anger Cues\""}
+{"level":30,"time":1786186342414,"msg":"[findOrCreateTask] Inserting new task: \"Calm Down Corner Setup\""}
+{"level":30,"time":1786186343045,"msg":"[findOrCreateTopic] Inserting new topic: \"Understanding Empathy and Shared Feelings\""}
+{"level":30,"time":1786186343631,"msg":"[findOrCreateTask] Inserting new task: \"Bandage the Stuffed Animal\""}
+{"level":30,"time":1786186344259,"msg":"[findOrCreateTask] Inserting new task: \"The Feelings Chart\""}
+{"level":30,"time":1786186344868,"msg":"[findOrCreateTask] Inserting new task: \"Sharing Our Favorite Toy\""}
+{"level":30,"time":1786186345472,"msg":"[findOrCreateTopic] Inserting new topic: \"Practicing Emotional Expression\""}
+{"level":30,"time":1786186346045,"msg":"[findOrCreateTask] Inserting new task: \"Drawing My Mood\""}
+{"level":30,"time":1786186346653,"msg":"[findOrCreateTask] Inserting new task: \"Feeling Word Flashcards\""}
+{"level":30,"time":1786186347328,"msg":"[findOrCreateTask] Inserting new task: \"The 'I Feel' Game\""}
+{"level":30,"time":1786186347956,"msg":"[findOrCreateTopic] Inserting new topic: \"Application and Problem Solving\""}
+{"level":30,"time":1786186348535,"msg":"[findOrCreateTask] Inserting new task: \"The Stop and Talk Technique\""}
+{"level":30,"time":1786186349108,"msg":"[findOrCreateTask] Inserting new task: \"Problem Solving Roleplay\""}
+{"level":30,"time":1786186349684,"msg":"[findOrCreateTask] Inserting new task: \"My Emotional Toolkit Box\""}
+{"level":30,"time":1786186349763,"summary":{"subjects":{"created":1,"merged":0,"unchanged":0},"topics":{"created":5,"merged":0,"unchanged":0},"tasks":{"created":15,"merged":0,"unchanged":0}},"subjectId":"92cdbb72-b2c9-4b10-83fc-f367eda72eec","msg":"[generateSyllabus] Done."}
+{"level":30,"time":1786192616706,"msg":"[generateSyllabus] age=3 skill=Beginner grade=null isGlobal=true topics=10"}
+{"level":50,"time":1786192628819,"error":{},"msg":"[generateSyllabus] Error"}
+{"level":30,"time":1786192851272,"msg":"[generateSyllabus] age=3 skill=Beginner grade=null isGlobal=true topics=10"}
+{"level":50,"time":1786192863201,"err":{"type":"SyntaxError","message":"Unexpected non-whitespace character after JSON at position 15317 (line 382 column 1)","stack":"SyntaxError: Unexpected non-whitespace character after JSON at position 15317 (line 382 column 1)\n    at JSON.parse (<anonymous>)\n    at handler (F:\\Yug\\UnBoxedLearning\\server\\ai\\generateSyllabus.ts:82:25)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async handler (file:///F:/Yug/UnBoxedLearning/api/index.ts:38:20)"},"message":"Unexpected non-whitespace character after JSON at position 15317 (line 382 column 1)","stack":"SyntaxError: Unexpected non-whitespace character after JSON at position 15317 (line 382 column 1)\n    at JSON.parse (<anonymous>)\n    at handler (F:\\Yug\\UnBoxedLearning\\server\\ai\\generateSyllabus.ts:82:25)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async handler (file:///F:/Yug/UnBoxedLearning/api/index.ts:38:20)","msg":"[generateSyllabus] Error details"}
+{"level":30,"time":1786193068393,"msg":"[generateSyllabus] age=3 skill=Beginner grade=null isGlobal=true topics=10"}
+{"level":30,"time":1786193103555,"msg":"[generateSyllabus] Parsed subject: \"Public Interaction & Social Skills\" with 10 topics"}
+{"level":30,"time":1786193104816,"msg":"[findOrCreateSubject] Inserting new subject: \"Public Interaction & Social Skills\""}
+{"level":30,"time":1786193105599,"msg":"[findOrCreateTopic] Inserting new topic: \"Understanding My Own Feelings\""}
+{"level":30,"time":1786193106687,"msg":"[findOrCreateTask] Inserting new task: \"Mirror Emotion Game\""}
+{"level":30,"time":1786193106772,"msg":"[syncActivities] Syncing 2 activities for task 80a91b8f-936a-4c05-8db1-4182245b3804"}
+{"level":30,"time":1786193106845,"msg":"[syncActivities] Inserted activity \"Mirror Time\""}
+{"level":30,"time":1786193106894,"msg":"[syncActivities] Inserted activity \"Face Talk\""}
+{"level":30,"time":1786193107425,"msg":"[findOrCreateTask] Inserting new task: \"Feeling Sorting Cards\""}
+{"level":30,"time":1786193107505,"msg":"[syncActivities] Syncing 2 activities for task 27c3aafc-8bfb-4d71-9fa4-474c454e63de"}
+{"level":30,"time":1786193107576,"msg":"[syncActivities] Inserted activity \"Card Review\""}
+{"level":30,"time":1786193107610,"msg":"[syncActivities] Inserted activity \"Sort the Piles\""}
+{"level":30,"time":1786193108128,"msg":"[findOrCreateTask] Inserting new task: \"Emotion Drawing\""}
+{"level":30,"time":1786193108226,"msg":"[syncActivities] Syncing 2 activities for task 1bee4e5d-9dcf-4dc9-b071-1b6a780a4d25"}
+{"level":30,"time":1786193108301,"msg":"[syncActivities] Inserted activity \"Color Choice\""}
+{"level":30,"time":1786193108340,"msg":"[syncActivities] Inserted activity \"Drawing Time\""}
+{"level":30,"time":1786193108911,"msg":"[findOrCreateTask] Inserting new task: \"Emotion Storytime\""}
+{"level":30,"time":1786193109018,"msg":"[syncActivities] Syncing 2 activities for task 450115ef-ebc8-45c8-ac27-f2faaeae03c6"}
+{"level":30,"time":1786193109086,"msg":"[syncActivities] Inserted activity \"Read Aloud\""}
+{"level":30,"time":1786193109126,"msg":"[syncActivities] Inserted activity \"Character Talk\""}
+{"level":30,"time":1786193109644,"msg":"[findOrCreateTask] Inserting new task: \"Feeling Check-in\""}
+{"level":30,"time":1786193109732,"msg":"[syncActivities] Syncing 2 activities for task a131df3d-2954-4cc4-9ce0-53babe6cb496"}
+{"level":30,"time":1786193109821,"msg":"[syncActivities] Inserted activity \"Morning Check-in\""}
+{"level":30,"time":1786193109859,"msg":"[syncActivities] Inserted activity \"Afternoon Check-in\""}
+{"level":30,"time":1786193110426,"msg":"[findOrCreateTopic] Inserting new topic: \"Learning to Greet Others\""}
+{"level":30,"time":1786193111016,"msg":"[findOrCreateTask] Inserting new task: \"Greeting Role Play\""}
+{"level":30,"time":1786193111112,"msg":"[syncActivities] Syncing 2 activities for task a6b882c5-4cfb-4756-b846-1b6edb6e707d"}
+{"level":30,"time":1786193111182,"msg":"[syncActivities] Inserted activity \"Toy Hello\""}
+{"level":30,"time":1786193111223,"msg":"[syncActivities] Inserted activity \"Wave Practice\""}
+{"level":30,"time":1786193111691,"msg":"[findOrCreateTask] Vector match: \"Greeting Role Play\" (id: a6b882c5-4cfb-4756-b846-1b6edb6e707d)"}
+{"level":30,"time":1786193111737,"msg":"[syncActivities] Syncing 2 activities for task a6b882c5-4cfb-4756-b846-1b6edb6e707d"}
+{"level":30,"time":1786193111815,"msg":"[syncActivities] Inserted activity \"Guest Arrival\""}
+{"level":30,"time":1786193111851,"msg":"[syncActivities] Inserted activity \"Wave Goodbye\""}
+{"level":30,"time":1786193112342,"msg":"[findOrCreateTask] Inserting new task: \"Hello/Goodbye Chart\""}
+{"level":30,"time":1786193112403,"msg":"[syncActivities] Syncing 2 activities for task 28144d43-4c03-4a65-b17a-a9d0ee07bb69"}
+{"level":30,"time":1786193112459,"msg":"[syncActivities] Inserted activity \"Art Session\""}
+{"level":30,"time":1786193112498,"msg":"[syncActivities] Inserted activity \"Displaying Art\""}
+{"level":30,"time":1786193112994,"msg":"[findOrCreateTask] Inserting new task: \"Video Greetings\""}
+{"level":30,"time":1786193113079,"msg":"[syncActivities] Syncing 2 activities for task 55b014e5-4f9f-4bbb-9f47-434c1592fcb0"}
+{"level":30,"time":1786193113152,"msg":"[syncActivities] Inserted activity \"Video Watch\""}
+{"level":30,"time":1786193113188,"msg":"[syncActivities] Inserted activity \"Observe\""}
+{"level":30,"time":1786193113704,"msg":"[findOrCreateTask] Inserting new task: \"Greeting Quiz\""}
+{"level":30,"time":1786193113799,"msg":"[syncActivities] Syncing 2 activities for task 532dcb89-a3bf-451f-a4c5-4bf41978da78"}
+{"level":30,"time":1786193113877,"msg":"[syncActivities] Inserted activity \"Quiz Time\""}
+{"level":30,"time":1786193113916,"msg":"[syncActivities] Inserted activity \"Celebrate\""}
+{"level":30,"time":1786193114403,"msg":"[findOrCreateTopic] Inserting new topic: \"Sharing and Taking Turns\""}
+{"level":30,"time":1786193114954,"msg":"[findOrCreateTask] Inserting new task: \"Turn-Taking Game\""}
+{"level":30,"time":1786193115041,"msg":"[syncActivities] Syncing 2 activities for task 3beb2d0a-26c5-4cb7-8beb-6e0e59d8f0be"}
+{"level":30,"time":1786193115110,"msg":"[syncActivities] Inserted activity \"Roll the Ball\""}
+{"level":30,"time":1786193115144,"msg":"[syncActivities] Inserted activity \"Turn Talk\""}
+{"level":30,"time":1786193115641,"msg":"[findOrCreateTask] Inserting new task: \"Sharing Toys\""}
+{"level":30,"time":1786193115727,"msg":"[syncActivities] Syncing 2 activities for task 34d503b7-97d0-4a6e-bdac-9f773008fe8f"}
+{"level":30,"time":1786193115795,"msg":"[syncActivities] Inserted activity \"Build Together\""}
+{"level":30,"time":1786193115827,"msg":"[syncActivities] Inserted activity \"Sharing Request\""}
+{"level":30,"time":1786193116363,"msg":"[findOrCreateTask] Inserting new task: \"Visual Timer Practice\""}
+{"level":30,"time":1786193116443,"msg":"[syncActivities] Syncing 2 activities for task 804b2b56-b222-4cd3-a6dc-e2a1ede0acbf"}
+{"level":30,"time":1786193116512,"msg":"[syncActivities] Inserted activity \"Timer Watch\""}
+{"level":30,"time":1786193116562,"msg":"[syncActivities] Inserted activity \"Switching\""}
+{"level":30,"time":1786193117053,"msg":"[findOrCreateTask] Inserting new task: \"Story of Sharing\""}
+{"level":30,"time":1786193117140,"msg":"[syncActivities] Syncing 2 activities for task 4629433e-d9aa-4535-8523-110f92445305"}
+{"level":30,"time":1786193117206,"msg":"[syncActivities] Inserted activity \"Reading\""}
+{"level":30,"time":1786193117245,"msg":"[syncActivities] Inserted activity \"Retell\""}
+{"level":30,"time":1786193117751,"msg":"[findOrCreateTask] Inserting new task: \"Sharing Art\""}
+{"level":30,"time":1786193117838,"msg":"[syncActivities] Syncing 2 activities for task f6057e8f-f071-416c-a65d-ea5bec00ce7e"}
+{"level":30,"time":1786193117893,"msg":"[syncActivities] Inserted activity \"Drawing\""}
+{"level":30,"time":1786193117922,"msg":"[syncActivities] Inserted activity \"Pass the Crayon\""}
+{"level":30,"time":1786193118432,"msg":"[findOrCreateTopic] Inserting new topic: \"Requesting Help Appropriately\""}
+{"level":30,"time":1786193119073,"msg":"[findOrCreateTask] Inserting new task: \"Help Request Practice\""}
+{"level":30,"time":1786193119158,"msg":"[syncActivities] Syncing 2 activities for task 27aa2d5b-fc8b-487e-a53b-6a514a07a367"}
+{"level":30,"time":1786193119225,"msg":"[syncActivities] Inserted activity \"Toy Stuck\""}
+{"level":30,"time":1786193119265,"msg":"[syncActivities] Inserted activity \"Polite Words\""}
+{"level":30,"time":1786193119978,"msg":"[findOrCreateTask] Inserting new task: \"Situational Role Play\""}
+{"level":30,"time":1786193120147,"msg":"[syncActivities] Syncing 2 activities for task 3d9e68f2-6453-4eb1-93dd-f38ff8e74908"}
+{"level":30,"time":1786193120335,"msg":"[syncActivities] Inserted activity \"Box Challenge\""}
+{"level":30,"time":1786193120428,"msg":"[syncActivities] Inserted activity \"Ask Help\""}
+{"level":30,"time":1786193120995,"msg":"[findOrCreateTask] Inserting new task: \"Help Request Card\""}
+{"level":30,"time":1786193121068,"msg":"[syncActivities] Syncing 2 activities for task ed8a6a60-f1fa-4026-9f79-801558309fe5"}
+{"level":30,"time":1786193121141,"msg":"[syncActivities] Inserted activity \"Draw Help\""}
+{"level":30,"time":1786193121178,"msg":"[syncActivities] Inserted activity \"Explain\""}
+{"level":30,"time":1786193121761,"msg":"[findOrCreateTask] Inserting new task: \"Video Helpers\""}
+{"level":30,"time":1786193121829,"msg":"[syncActivities] Syncing 2 activities for task c5c2d83a-ba00-44ef-b7a5-939a4dd53aff"}
+{"level":30,"time":1786193121889,"msg":"[syncActivities] Inserted activity \"Video View\""}
+{"level":30,"time":1786193121930,"msg":"[syncActivities] Inserted activity \"Recall\""}
+{"level":30,"time":1786193122429,"msg":"[findOrCreateTask] Inserting new task: \"Help Quiz\""}
+{"level":30,"time":1786193122524,"msg":"[syncActivities] Syncing 2 activities for task 7d7a5cd0-88cf-412f-884c-8eed794f0869"}
+{"level":30,"time":1786193122593,"msg":"[syncActivities] Inserted activity \"Ask Question\""}
+{"level":30,"time":1786193122627,"msg":"[syncActivities] Inserted activity \"Reinforce\""}
+{"level":30,"time":1786193123141,"msg":"[findOrCreateTopic] Inserting new topic: \"Using Polite Manners\""}
+{"level":30,"time":1786193123699,"msg":"[findOrCreateTask] Inserting new task: \"Please/Thank You Song\""}
+{"level":30,"time":1786193123789,"msg":"[syncActivities] Syncing 2 activities for task 4b58bc20-d4c5-465f-b7c6-28a8d0e2caca"}
+{"level":30,"time":1786193123859,"msg":"[syncActivities] Inserted activity \"Singing\""}
+{"level":30,"time":1786193123889,"msg":"[syncActivities] Inserted activity \"Action\""}
+{"level":30,"time":1786193124403,"msg":"[findOrCreateTask] Inserting new task: \"Tea Party Manners\""}
+{"level":30,"time":1786193124491,"msg":"[syncActivities] Syncing 2 activities for task 7023dec9-c0f3-499e-b26f-311852bdfb04"}
+{"level":30,"time":1786193124554,"msg":"[syncActivities] Inserted activity \"Set the Table\""}
+{"level":30,"time":1786193124590,"msg":"[syncActivities] Inserted activity \"Practice\""}
+{"level":30,"time":1786193125152,"msg":"[findOrCreateTask] Inserting new task: \"Manners Chart\""}
+{"level":30,"time":1786193125249,"msg":"[syncActivities] Syncing 2 activities for task 8299956a-283c-4dc2-b05e-80304a691d1f"}
+{"level":30,"time":1786193125310,"msg":"[syncActivities] Inserted activity \"Crafting\""}
+{"level":30,"time":1786193125343,"msg":"[syncActivities] Inserted activity \"Sticker Fun\""}
+{"level":30,"time":1786193125863,"msg":"[findOrCreateTask] Inserting new task: \"Manner Video\""}
+{"level":30,"time":1786193125936,"msg":"[syncActivities] Syncing 2 activities for task 782b11ed-7e5c-4c7c-8995-ae31afa03216"}
+{"level":30,"time":1786193125996,"msg":"[syncActivities] Inserted activity \"View\""}
+{"level":30,"time":1786193126026,"msg":"[syncActivities] Inserted activity \"Talk\""}
+{"level":30,"time":1786193126578,"msg":"[findOrCreateTask] Inserting new task: \"Manners Quiz\""}
+{"level":30,"time":1786193126662,"msg":"[syncActivities] Syncing 2 activities for task 7ff55009-51c7-4517-aef0-80ab2e5ef3d5"}
+{"level":30,"time":1786193126724,"msg":"[syncActivities] Inserted activity \"Answer\""}
+{"level":30,"time":1786193126756,"msg":"[syncActivities] Inserted activity \"Praise\""}
+{"level":30,"time":1786193127276,"msg":"[findOrCreateTopic] Inserting new topic: \"Expressing Basic Needs\""}
+{"level":30,"time":1786193127871,"msg":"[findOrCreateTask] Inserting new task: \"Need Identification\""}
+{"level":30,"time":1786193127963,"msg":"[syncActivities] Syncing 2 activities for task cc29a97d-981f-49d5-ac8b-c8615eea6a58"}
+{"level":30,"time":1786193128021,"msg":"[syncActivities] Inserted activity \"Sort\""}
+{"level":30,"time":1786193128054,"msg":"[syncActivities] Inserted activity \"Name Needs\""}
+{"level":30,"time":1786193128595,"msg":"[findOrCreateTask] Inserting new task: \"Expressing 'I Need'\""}
+{"level":30,"time":1786193128678,"msg":"[syncActivities] Syncing 2 activities for task 677dd85d-ce6e-4b02-882f-d34f2242b8e8"}
+{"level":30,"time":1786193128737,"msg":"[syncActivities] Inserted activity \"Fill the Blank\""}
+{"level":30,"time":1786193128769,"msg":"[syncActivities] Inserted activity \"Practice\""}
+{"level":30,"time":1786193129285,"msg":"[findOrCreateTask] Inserting new task: \"Needs Drawing\""}
+{"level":30,"time":1786193129354,"msg":"[syncActivities] Syncing 2 activities for task 24c63b21-562f-403e-8944-a3c99ceb7162"}
+{"level":30,"time":1786193129427,"msg":"[syncActivities] Inserted activity \"Draw\""}
+{"level":30,"time":1786193129465,"msg":"[syncActivities] Inserted activity \"Share\""}
+{"level":30,"time":1786193129972,"msg":"[findOrCreateTask] Inserting new task: \"Needs Video\""}
+{"level":30,"time":1786193130038,"msg":"[syncActivities] Syncing 2 activities for task 23970bf9-dda7-40ac-9f6e-594d4feb9ea9"}
+{"level":30,"time":1786193130092,"msg":"[syncActivities] Inserted activity \"View\""}
+{"level":30,"time":1786193130122,"msg":"[syncActivities] Inserted activity \"Retell\""}
+{"level":30,"time":1786193130614,"msg":"[findOrCreateTask] Inserting new task: \"Needs Quiz\""}
+{"level":30,"time":1786193130698,"msg":"[syncActivities] Syncing 2 activities for task 301c1b3d-bfa1-48d0-8bc9-3ccdb9abc94a"}
+{"level":30,"time":1786193130763,"msg":"[syncActivities] Inserted activity \"Ask\""}
+{"level":30,"time":1786193130815,"msg":"[syncActivities] Inserted activity \"Reward\""}
+{"level":30,"time":1786193131332,"msg":"[findOrCreateTopic] Inserting new topic: \"Introduction to Quiet Time\""}
+{"level":30,"time":1786193131902,"msg":"[findOrCreateTask] Inserting new task: \"Quiet vs. Loud Sort\""}
+{"level":30,"time":1786193131975,"msg":"[syncActivities] Syncing 2 activities for task 7589a417-c574-4b20-b539-e2624e58cc6f"}
+{"level":30,"time":1786193132046,"msg":"[syncActivities] Inserted activity \"Listen\""}
+{"level":30,"time":1786193132081,"msg":"[syncActivities] Inserted activity \"Sort\""}
+{"level":30,"time":1786193132575,"msg":"[findOrCreateTask] Inserting new task: \"Quiet Time Practice\""}
+{"level":30,"time":1786193132644,"msg":"[syncActivities] Syncing 2 activities for task 293734a6-0bb3-47e2-b46f-435ca50694e5"}
+{"level":30,"time":1786193132704,"msg":"[syncActivities] Inserted activity \"Timer\""}
+{"level":30,"time":1786193132732,"msg":"[syncActivities] Inserted activity \"Reflect\""}
+{"level":30,"time":1786193133213,"msg":"[findOrCreateTask] Inserting new task: \"Quiet Art\""}
+{"level":30,"time":1786193133287,"msg":"[syncActivities] Syncing 2 activities for task ebbefa9c-4ee7-4a8a-8c28-e3e3e8d55e10"}
+{"level":30,"time":1786193133359,"msg":"[syncActivities] Inserted activity \"Draw\""}
+{"level":30,"time":1786193133393,"msg":"[syncActivities] Inserted activity \"Talk Quietly\""}
+{"level":30,"time":1786193133923,"msg":"[findOrCreateTask] Inserting new task: \"Quiet Video\""}
+{"level":30,"time":1786193134003,"msg":"[syncActivities] Syncing 2 activities for task 14f36f05-bf45-4b4b-be62-d7efef3f04a4"}
+{"level":30,"time":1786193134066,"msg":"[syncActivities] Inserted activity \"Watch\""}
+{"level":30,"time":1786193134104,"msg":"[syncActivities] Inserted activity \"Discuss\""}
+{"level":30,"time":1786193134781,"msg":"[findOrCreateTask] Inserting new task: \"Quiet Quiz\""}
+{"level":30,"time":1786193134849,"msg":"[syncActivities] Syncing 2 activities for task 946ebfe0-19ce-4eec-ab53-a59417136738"}
+{"level":30,"time":1786193134915,"msg":"[syncActivities] Inserted activity \"Ask\""}
+{"level":30,"time":1786193134950,"msg":"[syncActivities] Inserted activity \"Reward\""}
+{"level":30,"time":1786193135449,"msg":"[findOrCreateTopic] Inserting new topic: \"Following Simple Directions\""}
+{"level":30,"time":1786193136079,"msg":"[findOrCreateTask] Inserting new task: \"Follow the Leader\""}
+{"level":30,"time":1786193136229,"msg":"[syncActivities] Syncing 2 activities for task 2e0b5bd7-e97d-46be-add9-72ee80d6e8a8"}
+{"level":30,"time":1786193136293,"msg":"[syncActivities] Inserted activity \"Action\""}
+{"level":30,"time":1786193136327,"msg":"[syncActivities] Inserted activity \"Repeat\""}
+{"level":30,"time":1786193136810,"msg":"[findOrCreateTask] Inserting new task: \"Simon Says Intro\""}
+{"level":30,"time":1786193136882,"msg":"[syncActivities] Syncing 2 activities for task e833688a-565d-4d8f-b3c3-6aee80d7390f"}
+{"level":30,"time":1786193136951,"msg":"[syncActivities] Inserted activity \"Game\""}
+{"level":30,"time":1786193136985,"msg":"[syncActivities] Inserted activity \"Practice\""}
+{"level":30,"time":1786193137464,"msg":"[findOrCreateTask] Inserting new task: \"Action Drawing\""}
+{"level":30,"time":1786193137541,"msg":"[syncActivities] Syncing 2 activities for task 9f9e79e3-8199-405d-a3a8-949d31b4b87f"}
+{"level":30,"time":1786193137602,"msg":"[syncActivities] Inserted activity \"Draw\""}
+{"level":30,"time":1786193137632,"msg":"[syncActivities] Inserted activity \"Add\""}
+{"level":30,"time":1786193138112,"msg":"[findOrCreateTask] Inserting new task: \"Direction Video\""}
+{"level":30,"time":1786193138201,"msg":"[syncActivities] Syncing 2 activities for task be3f8706-a4a9-493f-8248-b91f4c1af00c"}
+{"level":30,"time":1786193138259,"msg":"[syncActivities] Inserted activity \"Watch\""}
+{"level":30,"time":1786193138289,"msg":"[syncActivities] Inserted activity \"Talk\""}
+{"level":30,"time":1786193138766,"msg":"[findOrCreateTask] Inserting new task: \"Instruction Quiz\""}
+{"level":30,"time":1786193138835,"msg":"[syncActivities] Syncing 2 activities for task 005388af-e3f7-429a-8612-27527340db7b"}
+{"level":30,"time":1786193138903,"msg":"[syncActivities] Inserted activity \"Command\""}
+{"level":30,"time":1786193138933,"msg":"[syncActivities] Inserted activity \"Success\""}
+{"level":30,"time":1786193139440,"msg":"[findOrCreateTopic] Inserting new topic: \"Being Gentle with Others\""}
+{"level":30,"time":1786193140033,"msg":"[findOrCreateTask] Inserting new task: \"Gentle Touch Practice\""}
+{"level":30,"time":1786193140095,"msg":"[syncActivities] Syncing 2 activities for task e7266cfa-9f42-4877-ac6d-8691d701bd6f"}
+{"level":30,"time":1786193140151,"msg":"[syncActivities] Inserted activity \"Practice\""}
+{"level":30,"time":1786193140185,"msg":"[syncActivities] Inserted activity \"Discuss\""}
+{"level":30,"time":1786193140677,"msg":"[findOrCreateTask] Inserting new task: \"Gentle/Rough Sort\""}
+{"level":30,"time":1786193140752,"msg":"[syncActivities] Syncing 2 activities for task a1ba8afd-bc5e-49f4-9e90-f01e1b85fb86"}
+{"level":30,"time":1786193140826,"msg":"[syncActivities] Inserted activity \"Touch\""}
+{"level":30,"time":1786193140867,"msg":"[syncActivities] Inserted activity \"Sort\""}
+{"level":30,"time":1786193141364,"msg":"[findOrCreateTask] Inserting new task: \"Gentle Drawing\""}
+{"level":30,"time":1786193141439,"msg":"[syncActivities] Syncing 2 activities for task 0c5ace1c-9a5a-439a-9dee-214c6f3fc851"}
+{"level":30,"time":1786193141498,"msg":"[syncActivities] Inserted activity \"Draw\""}
+{"level":30,"time":1786193141525,"msg":"[syncActivities] Inserted activity \"Explain\""}
+{"level":30,"time":1786193142081,"msg":"[findOrCreateTask] Inserting new task: \"Gentle Video\""}
+{"level":30,"time":1786193142159,"msg":"[syncActivities] Syncing 2 activities for task 41830c13-b2b1-4ab0-98fb-8b9225710d46"}
+{"level":30,"time":1786193142223,"msg":"[syncActivities] Inserted activity \"Watch\""}
+{"level":30,"time":1786193142267,"msg":"[syncActivities] Inserted activity \"Discuss\""}
+{"level":30,"time":1786193142762,"msg":"[findOrCreateTask] Inserting new task: \"Gentle Quiz\""}
+{"level":30,"time":1786193142837,"msg":"[syncActivities] Syncing 2 activities for task a7a57fbd-fd22-47b5-b41d-d696c70f9145"}
+{"level":30,"time":1786193142906,"msg":"[syncActivities] Inserted activity \"Ask\""}
+{"level":30,"time":1786193142944,"msg":"[syncActivities] Inserted activity \"Celebrate\""}
+{"level":30,"time":1786193143499,"msg":"[findOrCreateTopic] Inserting new topic: \"Being Part of a Group\""}
+{"level":30,"time":1786193144111,"msg":"[findOrCreateTask] Inserting new task: \"Group Together Game\""}
+{"level":30,"time":1786193144189,"msg":"[syncActivities] Syncing 2 activities for task 6aaedea0-c27b-4a34-aad9-5c7ed39e8c2b"}
+{"level":30,"time":1786193144263,"msg":"[syncActivities] Inserted activity \"Walk\""}
+{"level":30,"time":1786193144296,"msg":"[syncActivities] Inserted activity \"Talk\""}
+{"level":30,"time":1786193144772,"msg":"[findOrCreateTask] Inserting new task: \"Group Circle Time\""}
+{"level":30,"time":1786193144862,"msg":"[syncActivities] Syncing 2 activities for task bee23413-9d3a-4d53-a81a-ca67b2e226e3"}
+{"level":30,"time":1786193144946,"msg":"[syncActivities] Inserted activity \"Gather\""}
+{"level":30,"time":1786193144985,"msg":"[syncActivities] Inserted activity \"Talk\""}
+{"level":30,"time":1786193145496,"msg":"[findOrCreateTask] Inserting new task: \"Group Drawing\""}
+{"level":30,"time":1786193145583,"msg":"[syncActivities] Syncing 2 activities for task a57048ac-da30-4516-bb31-0818d582cc29"}
+{"level":30,"time":1786193145655,"msg":"[syncActivities] Inserted activity \"Draw\""}
+{"level":30,"time":1786193145686,"msg":"[syncActivities] Inserted activity \"Share\""}
+{"level":30,"time":1786193146146,"msg":"[findOrCreateTask] Inserting new task: \"Group Video\""}
+{"level":30,"time":1786193146235,"msg":"[syncActivities] Syncing 2 activities for task 1bc52744-b131-4ac5-89e9-a17f3c507bdb"}
+{"level":30,"time":1786193146312,"msg":"[syncActivities] Inserted activity \"Watch\""}
+{"level":30,"time":1786193146348,"msg":"[syncActivities] Inserted activity \"Discuss\""}
+{"level":30,"time":1786193146830,"msg":"[findOrCreateTask] Inserting new task: \"Group Quiz\""}
+{"level":30,"time":1786193146896,"msg":"[syncActivities] Syncing 2 activities for task 32282848-1630-44d8-b82d-2d1878ecab6f"}
+{"level":30,"time":1786193146978,"msg":"[syncActivities] Inserted activity \"Ask\""}
+{"level":30,"time":1786193147010,"msg":"[syncActivities] Inserted activity \"Praise\""}
+{"level":30,"time":1786193147010,"summary":{"subjects":{"created":1,"merged":0,"unchanged":0},"topics":{"created":10,"merged":0,"unchanged":0},"tasks":{"created":49,"merged":0,"unchanged":1}},"subjectId":"d3cc8eeb-84f4-4171-b7ef-8d0ad41f325d","msg":"[generateSyllabus] Done."}
+{"level":30,"time":1786387828929,"msg":"[chat] Calling Gemini..."}
+{"level":30,"time":1786388053826,"msg":"[chat] Calling Gemini..."}
+{"level":30,"time":1786388054952,"msg":"[chat] Tool called: update_task_stage. Task: Mirror Face Exploration, Stage: Introduced"}
+{"level":30,"time":1786388055102,"msg":"[chat] Tool called: update_task_stage. Task: Greeting Role Play, Stage: Introduced"}
+{"level":30,"time":1786388055206,"msg":"[chat] Tool called: update_task_stage. Task: Follow the Leader, Stage: Introduced"}
+{"level":30,"time":1786685979310,"msg":"[generateSyllabus] age=3 skill=Beginner grade=Preschool isGlobal=true topics=10"}
+{"level":50,"time":1786686039478,"err":{"type":"ApiError","message":"{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}","stack":"ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}\n    at throwErrorIfNotOK (F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:14157:30)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:13857:13\n    at async Models.generateContent (F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:15288:24)\n    at async generateJson (F:\\Yug\\UnBoxedLearning\\server\\ai\\aiClient.ts:57:20)\n    at async handler (F:\\Yug\\UnBoxedLearning\\server\\ai\\generateSyllabus.ts:81:20)\n    at async handler (file:///F:/Yug/UnBoxedLearning/api/index.ts:38:20)","name":"ApiError","status":503},"message":"{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}","stack":"ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}\n    at throwErrorIfNotOK (F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:14157:30)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:13857:13\n    at async Models.generateContent (F:\\Yug\\UnBoxedLearning\\node_modules\\@google\\genai\\dist\\node\\index.cjs:15288:24)\n    at async generateJson (F:\\Yug\\UnBoxedLearning\\server\\ai\\aiClient.ts:57:20)\n    at async handler (F:\\Yug\\UnBoxedLearning\\server\\ai\\generateSyllabus.ts:81:20)\n    at async handler (file:///F:/Yug/UnBoxedLearning/api/index.ts:38:20)","msg":"[generateSyllabus] Error details"}
+{"level":30,"time":1786686175996,"msg":"[generateSyllabus] age=3 skill=Beginner grade=Preschool isGlobal=true topics=10"}
+{"level":30,"time":1786686202545,"msg":"[generateSyllabus] Parsed subject: \"Jolly Phonics Foundation\" with 2 topics"}
+{"level":30,"time":1786686204475,"msg":"[findOrCreateSubject] Inserting new subject: \"Jolly Phonics Foundation\""}
+{"level":30,"time":1786686205170,"msg":"[findOrCreateTopic] Inserting new topic: \"Group 1: S, A, T, I, P, N Sounds\""}
+{"level":30,"time":1786686205843,"msg":"[findOrCreateTask] Inserting new task: \"Learn the S Sound\""}
+{"level":30,"time":1786686205961,"msg":"[syncActivities] Syncing 2 activities for task 6bd5e862-cc36-4435-8d47-cf1a756fb107"}
+{"level":30,"time":1786686206054,"msg":"[syncActivities] Inserted activity \"Snake Sound Session\""}
+{"level":30,"time":1786686206106,"msg":"[syncActivities] Inserted activity \"Snake Mimicry\""}
+{"level":30,"time":1786686206708,"msg":"[findOrCreateTask] Vector match: \"Learn the S Sound\" (id: 6bd5e862-cc36-4435-8d47-cf1a756fb107)"}
+{"level":30,"time":1786686206761,"msg":"[syncActivities] Syncing 2 activities for task 6bd5e862-cc36-4435-8d47-cf1a756fb107"}
+{"level":30,"time":1786686206823,"msg":"[syncActivities] Inserted activity \"Ant Arm Crawl\""}
+{"level":30,"time":1786686206873,"msg":"[syncActivities] Inserted activity \"Letter Tracing\""}
+{"level":30,"time":1786686207388,"msg":"[findOrCreateTask] Vector match: \"Learn the S Sound\" (id: 6bd5e862-cc36-4435-8d47-cf1a756fb107)"}
+{"level":30,"time":1786686207430,"msg":"[syncActivities] Syncing 2 activities for task 6bd5e862-cc36-4435-8d47-cf1a756fb107"}
+{"level":30,"time":1786686207510,"msg":"[syncActivities] Inserted activity \"Tennis Action\""}
+{"level":30,"time":1786686207553,"msg":"[syncActivities] Inserted activity \"Sound Match\""}
+{"level":30,"time":1786686208115,"msg":"[findOrCreateTask] Inserting new task: \"Learn the I Sound\""}
+{"level":30,"time":1786686208217,"msg":"[syncActivities] Syncing 2 activities for task 624ebc2e-0ee6-4452-b94e-2211d107bdb7"}
+{"level":30,"time":1786686208286,"msg":"[syncActivities] Inserted activity \"Mouse Mimicry\""}
+{"level":30,"time":1786686208323,"msg":"[syncActivities] Inserted activity \"I-Sound Game\""}
+{"level":30,"time":1786686208873,"msg":"[findOrCreateTask] Inserting new task: \"Learn P and N Sounds\""}
+{"level":30,"time":1786686208962,"msg":"[syncActivities] Syncing 2 activities for task c50af905-53ff-4117-afc1-d7b53038eb7f"}
+{"level":30,"time":1786686209036,"msg":"[syncActivities] Inserted activity \"Puffing P\""}
+{"level":30,"time":1786686209084,"msg":"[syncActivities] Inserted activity \"Airplane N\""}
+{"level":30,"time":1786686209603,"msg":"[findOrCreateTopic] Inserting new topic: \"Blending Foundation: CVC Words\""}
+{"level":30,"time":1786686210229,"msg":"[findOrCreateTask] Inserting new task: \"Blending S-A-T\""}
+{"level":30,"time":1786686210350,"msg":"[syncActivities] Syncing 2 activities for task a34d50f9-e61d-4e57-b0e0-a852651872b5"}
+{"level":30,"time":1786686210420,"msg":"[syncActivities] Inserted activity \"Sound Arm\""}
+{"level":30,"time":1786686210465,"msg":"[syncActivities] Inserted activity \"Word Reading\""}
+{"level":30,"time":1786686210994,"msg":"[findOrCreateTask] Vector match: \"Blending S-A-T\" (id: a34d50f9-e61d-4e57-b0e0-a852651872b5)"}
+{"level":30,"time":1786686211043,"msg":"[syncActivities] Syncing 2 activities for task a34d50f9-e61d-4e57-b0e0-a852651872b5"}
+{"level":30,"time":1786686211122,"msg":"[syncActivities] Inserted activity \"Pan Cooking\""}
+{"level":30,"time":1786686211156,"msg":"[syncActivities] Inserted activity \"Word Hunt\""}
+{"level":30,"time":1786686211769,"msg":"[findOrCreateTask] Vector match: \"Blending S-A-T\" (id: a34d50f9-e61d-4e57-b0e0-a852651872b5)"}
+{"level":30,"time":1786686211811,"msg":"[syncActivities] Syncing 2 activities for task a34d50f9-e61d-4e57-b0e0-a852651872b5"}
+{"level":30,"time":1786686211885,"msg":"[syncActivities] Inserted activity \"Ant Drawing\""}
+{"level":30,"time":1786686211922,"msg":"[syncActivities] Inserted activity \"Word Sounding\""}
+{"level":30,"time":1786686212443,"msg":"[findOrCreateTask] Inserting new task: \"Blending T-A-P\""}
+{"level":30,"time":1786686212527,"msg":"[syncActivities] Syncing 2 activities for task f05afcd6-b74e-4e9b-b9e2-fee839d0f3e8"}
+{"level":30,"time":1786686212600,"msg":"[syncActivities] Inserted activity \"Table Tapping\""}
+{"level":30,"time":1786686212646,"msg":"[syncActivities] Inserted activity \"Quick Read\""}
+{"level":30,"time":1786686213170,"msg":"[findOrCreateTask] Inserting new task: \"Final Blending Review\""}
+{"level":30,"time":1786686213250,"msg":"[syncActivities] Syncing 2 activities for task 36e171dc-8490-476a-8714-827104051121"}
+{"level":30,"time":1786686213339,"msg":"[syncActivities] Inserted activity \"Flashcard Challenge\""}
+{"level":30,"time":1786686213378,"msg":"[syncActivities] Inserted activity \"Word Bingo\""}
+{"level":30,"time":1786686213379,"summary":{"subjects":{"created":1,"merged":0,"unchanged":0},"topics":{"created":2,"merged":0,"unchanged":0},"tasks":{"created":6,"merged":0,"unchanged":4}},"subjectId":"7102bd37-9658-43d6-85b4-a33499c20298","msg":"[generateSyllabus] Done."}

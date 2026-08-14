@@ -227,3 +227,8 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 
   return { hasFamily, hasChild, hasSubjects };
 }
+
+export async function completeOnboarding(): Promise<void> {
+  const { error } = await supabase.rpc('complete_onboarding');
+  if (error) throw error;
+}

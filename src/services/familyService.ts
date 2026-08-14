@@ -55,7 +55,7 @@ export async function getMyProfile() {
 export async function createFamily(name: string) {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) {
-    throw new Error('Please sign in with Google before creating a family workspace.');
+    throw new Error('Please sign in before creating a family workspace.');
   }
 
   const { data: family, error: familyError } = await supabase
@@ -147,4 +147,19 @@ export async function joinFamilyWithCode(code: string) {
 
   if (error) throw error;
   return data as { family_id: string; family_name: string; role: string };
+}
+
+export async function cancelFamilyInvitation(invitationId: string) {
+  const { error } = await supabase.rpc('cancel_family_invitation', { invitation_id: invitationId });
+  if (error) throw error;
+}
+
+export async function removeFamilyMember(memberUserId: string) {
+  const { error } = await supabase.rpc('remove_family_member', { member_user_id: memberUserId });
+  if (error) throw error;
+}
+
+export async function leaveFamily() {
+  const { error } = await supabase.rpc('leave_family');
+  if (error) throw error;
 }

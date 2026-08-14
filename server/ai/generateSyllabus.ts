@@ -2,9 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { allowMethods, readString, sendError } from '../../src/lib/api-utils/http';
 import { createServerSupabase } from '../../src/lib/api-utils/supabase';
 import { generateJson, requireGeminiKey } from './aiClient';
-import { findOrCreateSubject, findOrCreateTopic, findOrCreateTask, insertTaskProgress, enrollChildInSubject, enrollChildInTopic } from './aiDb';
+import { findOrCreateSubject, findOrCreateTopic, findOrCreateTask, insertTaskProgress, enrollChildInSubject, enrollChildInTopic, syncActivities } from './aiDb';
 import type { MergeAction } from './aiDb';
 import { buildSyllabusPrompt } from './prompts/SyllabusPrompt';
+import { logger } from '../logger';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,12 @@ interface SyllabusResult {
       learning_objective?: string;
       assessment_criteria?: string;
       resources?: Array<{ type: string; url: string; title: string }>;
+      activities?: Array<{
+        name: string;
+        activity_type?: string;
+        instructions?: string;
+        materials?: string[];
+      }>;
     }>;
   }>;
 }
@@ -63,15 +70,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const topicsCount   = Number(req.body?.topicsCount)   || 5;
     const tasksPerTopic = Number(req.body?.tasksPerTopic) || 3;
     const childId       = req.body?.childId ? String(req.body.childId) : null;
+    const skillLevel    = req.body?.skillLevel ? String(req.body.skillLevel) : 'Beginner';
+    const targetGrade   = req.body?.targetGrade ? String(req.body.targetGrade) : null;
+    const isGlobal      = req.body?.isGlobal === true;
 
-    console.log(`[generateSyllabus] age=${age} topics=${topicsCount} tasks=${tasksPerTopic}`);
+    logger.info(`[generateSyllabus] age=${age} skill=${skillLevel} grade=${targetGrade} isGlobal=${isGlobal} topics=${topicsCount}`);
 
     // 1. Generate syllabus JSON from AI
-    const prompt = buildSyllabusPrompt({ sourceText, age, topicsCount, tasksPerTopic });
+    const prompt = buildSyllabusPrompt({ sourceText, age, skillLevel, targetGrade, topicsCount, tasksPerTopic });
     const raw    = await generateJson(prompt);
-    const result = JSON.parse(raw) as SyllabusResult;
+    
+    // Sometimes the model appends trailing whitespace or markdown (e.g. ```) even with application/json
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("Could not find a JSON object in the AI response.");
+    
+    const result = JSON.parse(match[0]) as SyllabusResult;
 
-    console.log(`[generateSyllabus] Parsed subject: "${result.subject.name}" with ${result.topics.length} topics`);
+    logger.info(`[generateSyllabus] Parsed subject: "${result.subject.name}" with ${result.topics.length} topics`);
 
     const supabase = createServerSupabase(req);
 
@@ -89,8 +104,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const subjectResult = await findOrCreateSubject(supabase, {
       name: result.subject.name,
       description: result.subject.description,
-      childId,
+      childId: childId,
       userId: user.id,
+      is_global: isGlobal,
     });
     tally(subjectSummary, subjectResult.action);
     const subjectId = subjectResult.id;
@@ -141,11 +157,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (taskResult.isNew && childId) {
           await insertTaskProgress(supabase, { taskId: taskResult.id, childId });
         }
+
+        // Sync Activities
+        if (task.activities && task.activities.length > 0) {
+          await syncActivities(supabase, taskResult.id, task.activities);
+        }
       }
     }
 
     const summary = { subjects: subjectSummary, topics: topicSummary, tasks: taskSummary };
-    console.log(`[generateSyllabus] Done. subjectId=${subjectId} summary=`, summary);
+    logger.info({ summary, subjectId }, `[generateSyllabus] Done.`);
 
     res.status(200).json({
       success: true,
@@ -153,8 +174,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       summary,
       message: buildMessage(summary),
     });
-  } catch (error) {
-    console.error('[generateSyllabus] Error:', error);
+  } catch (error: any) {
+    logger.error({ err: error, message: error.message, stack: error.stack }, '[generateSyllabus] Error details');
     sendError(res, error, 500);
   }
 }

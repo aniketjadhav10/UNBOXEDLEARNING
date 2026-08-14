@@ -3,11 +3,11 @@
 // ============================================================
 import { X, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { OnboardingProvider, useOnboarding, TOTAL_STEPS } from '../../context/OnboardingContext';
+import { useOnboarding, TOTAL_STEPS } from '../../context/OnboardingContext';
+import { useAuth } from '../../context/AuthContext';
 import { StepWelcome }          from './steps/StepWelcome';
 import { StepCreateFamily }     from './steps/StepCreateFamily';
 import { StepAddChild }         from './steps/StepAddChild';
-import { StepCurriculum }       from './steps/StepCurriculum';
 import { StepInviteCoParent }   from './steps/StepInviteCoParent';
 import { StepDone }             from './steps/StepDone';
 
@@ -15,7 +15,6 @@ const STEP_LABELS = [
   'Welcome',
   'Family',
   'Children',
-  'Curriculum',
   'Co-parent',
   'Done',
 ];
@@ -24,7 +23,6 @@ const STEP_COMPONENTS = [
   StepWelcome,
   StepCreateFamily,
   StepAddChild,
-  StepCurriculum,
   StepInviteCoParent,
   StepDone,
 ];
@@ -32,6 +30,7 @@ const STEP_COMPONENTS = [
 // ── Inner wizard (has access to OnboardingContext) ────────────
 function WizardInner() {
   const { state, goPrev, markComplete } = useOnboarding();
+  const { markOnboardedLocally } = useAuth();
   const navigate = useNavigate();
   const { currentStep } = state;
 
@@ -39,9 +38,10 @@ function WizardInner() {
   const isFirstStep = currentStep === 0;
   const isLastStep  = currentStep === TOTAL_STEPS - 1;
 
-  function handleExit() {
-    // Mark complete and navigate to dashboard
-    markComplete();
+  async function handleExit() {
+    // Mark complete in DB and locally, then navigate to dashboard
+    await markComplete();
+    markOnboardedLocally();
     navigate('/');
   }
 
@@ -174,6 +174,7 @@ function WizardInner() {
 
 // ── Public export — wraps in OnboardingProvider ───────────────
 export function OnboardingWizardPage() {
+  const { OnboardingProvider } = require('../../context/OnboardingContext');
   return (
     <OnboardingProvider>
       <WizardInner />

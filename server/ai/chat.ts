@@ -2,13 +2,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { allowMethods, sendError } from '../../src/lib/api-utils/http';
 import { createServerSupabase } from '../../src/lib/api-utils/supabase';
 import { ai, MODEL_NAME, requireGeminiKey, getEmbedding } from './aiClient';
+import { logger } from '../logger';
 
 // Helper to sanitize DB errors
 const safeQuery = async <T>(promise: Promise<T>) => {
   try {
     return await promise;
-  } catch (err) {
-    console.error('DB query error:', err);
+  } catch (error: any) {
+    logger.error({ err: error, message: error?.message, stack: error?.stack }, '[chat] DB query error details');
     return null;
   }
 };
@@ -24,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Ensure user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized access attempt in chat');
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -131,7 +133,8 @@ ${memoryContext}
 ${dbContext}
 When you learn an important new fact or preference about the user or their child (e.g. learning style, favorite subjects, personal background), you MUST use the "save_user_memory" tool to remember it for future sessions.
 If the user asks about completed tasks, all tasks, or searches for a specific topic that isn't in the active curriculum state provided above, you MUST use the "search_curriculum_tasks" tool to search the database.
-Respond nicely and concisely.`;
+When a user asks to mark a task as completed, practicing, or any other stage, you MUST use the "update_task_stage" tool to update it.
+Respond nicely and concisely. You MUST format all your responses using Markdown, including bolding, lists, and code blocks where appropriate.`;
 
     // 4. Format Messages for Gemini
     const formattedMessages = messages.map((m: any) => ({
@@ -171,13 +174,31 @@ Respond nicely and concisely.`;
                 },
                 required: ['query']
               }
+            },
+            {
+              name: 'update_task_stage',
+              description: 'Updates the learning stage of a specific task progress record.',
+              parameters: {
+                type: 'OBJECT',
+                properties: {
+                  task_name: {
+                    type: 'STRING',
+                    description: 'The exact name of the task to update (from the active curriculum).'
+                  },
+                  new_stage: {
+                    type: 'STRING',
+                    description: 'The new stage to set. Must be one of: Not_Started, Introduced, Practicing, Comfortable, Confident, Needs_Practice.'
+                  }
+                },
+                required: ['task_name', 'new_stage']
+              }
             }
           ]
         }
       ]
     };
 
-    console.log('[chat] Calling Gemini...');
+    logger.info('[chat] Calling Gemini...');
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: formattedMessages,
@@ -194,7 +215,7 @@ Respond nicely and concisely.`;
        for (const call of functionCalls) {
           if (call.name === 'save_user_memory') {
              const fact = call.args?.fact;
-             console.log(`[chat] Tool called: save_user_memory. Fact: ${fact}`);
+             logger.info(`[chat] Tool called: save_user_memory. Fact: ${fact}`);
              
              if (fact) {
                 const factEmbedding = await getEmbedding(fact as string);
@@ -211,7 +232,7 @@ Respond nicely and concisely.`;
           }
           else if (call.name === 'search_curriculum_tasks') {
              const query = call.args?.query;
-             console.log(`[chat] Tool called: search_curriculum_tasks. Query: ${query}`);
+             logger.info(`[chat] Tool called: search_curriculum_tasks. Query: ${query}`);
              let searchResults = "No results found.";
              
              if (query) {
@@ -220,7 +241,7 @@ Respond nicely and concisely.`;
                    // Search tasks using vector similarity
                    const { data: matchedTasks } = await supabase.rpc('match_tasks', {
                       query_embedding: qEmbedding,
-                      topic_id_filter: null,
+                      p_topic_id: null,
                       match_threshold: 0.6,
                       match_count: 5
                    });
@@ -235,23 +256,52 @@ Respond nicely and concisely.`;
                response: { results: searchResults }
              });
           }
+          else if (call.name === 'update_task_stage') {
+              const taskName = call.args?.task_name;
+              const newStage = call.args?.new_stage;
+              logger.info(`[chat] Tool called: update_task_stage. Task: ${taskName}, Stage: ${newStage}`);
+              
+              let result = "Failed to update task.";
+              const { data: userData } = await supabase.from('children').select('id').eq('user_id', user.id);
+              const children = userData || [];
+
+              if (taskName && newStage) {
+                 // Find the task progress by finding the task first
+                 const { data: tasks } = await supabase.from('tasks').select('id, name').ilike('name', `%${taskName}%`).limit(1);
+                 
+                 if (tasks && tasks.length > 0) {
+                    const taskId = tasks[0].id;
+                    const { error } = await supabase.from('task_progress').update({ learning_stage: newStage }).eq('task_id', taskId).eq('child_id', children[0]?.id || null);
+                    
+                    if (!error) {
+                       result = `Successfully updated '${tasks[0].name}' to ${newStage}.`;
+                    }
+                 } else {
+                    result = `Task '${taskName}' not found.`;
+                 }
+              }
+              toolResponses.push({
+                name: 'update_task_stage',
+                response: { results: result }
+              });
+           }
        }
        
        if (!aiResponseText || toolResponses.length > 0) {
            formattedMessages.push({
              role: 'model',
-             parts: functionCalls.map(fc => ({ functionCall: fc }))
+             parts: response.candidates?.[0]?.content?.parts || []
            });
            
            formattedMessages.push({
-             role: 'function',
+             role: 'user',
              parts: toolResponses.map(tr => ({ functionResponse: tr }))
            });
 
            const followUp = await ai.models.generateContent({
               model: MODEL_NAME,
               contents: formattedMessages,
-              config: { systemInstruction } 
+              config: reqConfig
            });
            aiResponseText = followUp.text || 'Done!';
        }
@@ -278,8 +328,8 @@ Respond nicely and concisely.`;
       success: true,
       text: aiResponseText,
     });
-  } catch (error) {
-    console.error('[chat] Error:', error);
+  } catch (error: any) {
+    logger.error({ err: error, message: error?.message, stack: error?.stack }, '[chat] Request error details');
     sendError(res, error, 500);
   }
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { chatService, ChatSession, ChatMessage } from '../../services/chatService';
 
 interface ChatWindowProps {
@@ -15,6 +17,7 @@ export function ChatWindow({ sessions, activeSessionId, onSessionSelect, onNewSe
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export function ChatWindow({ sessions, activeSessionId, onSessionSelect, onNewSe
     setLoading(true);
 
     try {
+      setErrorMsg(null);
       // Send to AI
       const aiResponseText = await chatService.sendMessage(
         sessionId,
@@ -94,9 +98,11 @@ export function ChatWindow({ sessions, activeSessionId, onSessionSelect, onNewSe
       };
       setMessages(prev => [...prev, tempAiMsg]);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send message:', err);
-      // We could add an error message to the UI here
+      setErrorMsg(err.message || 'An error occurred while sending the message.');
+      // Remove the optimistic user message if it failed
+      setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id));
     } finally {
       setLoading(false);
     }
@@ -152,12 +158,20 @@ export function ChatWindow({ sessions, activeSessionId, onSessionSelect, onNewSe
                   <Bot className="w-5 h-5 text-gray-600" />
                 )}
               </div>
-              <div className={`px-4 py-3 rounded-2xl max-w-[80%] ${
+              <div className={`px-4 py-3 rounded-2xl max-w-[80%] overflow-hidden ${
                 msg.role === 'user' 
                   ? 'bg-indigo-600 text-white rounded-tr-none' 
                   : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none shadow-sm'
               }`}>
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                ) : (
+                  <div className="prose prose-sm max-w-none prose-indigo prose-p:leading-relaxed prose-pre:bg-gray-50 prose-pre:text-gray-800">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
@@ -177,6 +191,22 @@ export function ChatWindow({ sessions, activeSessionId, onSessionSelect, onNewSe
                   <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce [animation-delay:-0.15s]" />
                   <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" />
                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {errorMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-4"
+            >
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <Bot className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-100 text-red-700 shadow-sm rounded-tl-none text-sm">
+                <p><strong>Error:</strong> {errorMsg}</p>
+                <p className="mt-1 text-red-600 text-xs">If you're running locally, make sure you are using <code>npx vercel dev</code> instead of <code>npm run dev</code>.</p>
               </div>
             </motion.div>
           )}

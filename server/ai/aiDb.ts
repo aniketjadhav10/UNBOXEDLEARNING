@@ -12,6 +12,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getEmbedding, SIMILARITY_THRESHOLD } from './aiClient';
+import { logger } from '../logger';
 
 // ---------------------------------------------------------------------------
 // Shared result type
@@ -37,6 +38,7 @@ export interface SubjectInput {
   childId: string | null;
   userId: string;
   ageGroup?: string;
+  is_global?: boolean;
 }
 
 export interface TopicInput {
@@ -106,10 +108,10 @@ async function applyPatch(
   if (Object.keys(patch).length === 0) return false;
   const { error } = await supabase.from(table).update(patch).eq('id', id);
   if (error) {
-    console.warn(`[${label}] Patch failed for id=${id}:`, error.message);
+    logger.warn(`[${label}] Patch failed for id=${id}: ${error.message}`);
     return false;
   }
-  console.log(`[${label}] Merged fields [${Object.keys(patch).join(', ')}] into id=${id}`);
+  logger.info(`[${label}] Merged fields [${Object.keys(patch).join(', ')}] into id=${id}`);
   return true;
 }
 
@@ -135,11 +137,11 @@ export async function findOrCreateSubject(
       match_threshold: SIMILARITY_THRESHOLD,
       match_count: 1,
     });
-    if (error) console.warn('[findOrCreateSubject] RPC error:', error.message);
+    if (error) logger.warn(`[findOrCreateSubject] RPC error: ${error.message}`);
 
     if (matches && matches.length > 0) {
       const id = matches[0].id as string;
-      console.log(`[findOrCreateSubject] Vector match: "${matches[0].name}" (id: ${id})`);
+      logger.info(`[findOrCreateSubject] Vector match: "${matches[0].name}" (id: ${id})`);
       return mergeSubject(supabase, id, input, embedding);
     }
   }
@@ -151,12 +153,12 @@ export async function findOrCreateSubject(
     .ilike('name', input.name)
     .maybeSingle();
   if (exact) {
-    console.log(`[findOrCreateSubject] Exact match: "${input.name}" (id: ${exact.id})`);
+    logger.info(`[findOrCreateSubject] Exact match: "${input.name}" (id: ${exact.id})`);
     return mergeSubject(supabase, exact.id as string, input, embedding, exact as Record<string, unknown>);
   }
 
   // ── 3. Insert new subject ────────────────────────────────────
-  console.log(`[findOrCreateSubject] Inserting new subject: "${input.name}"`);
+  logger.info(`[findOrCreateSubject] Inserting new subject: "${input.name}"`);
   const { data: inserted, error: insertErr } = await supabase
     .from('subjects')
     .insert({
@@ -164,7 +166,7 @@ export async function findOrCreateSubject(
       description: input.description,
       color: 'violet',
       created_by: input.userId,
-      is_global: false,
+      is_global: input.is_global ?? false,
       is_active: true,
       embedding,
     })
@@ -212,11 +214,11 @@ export async function findOrCreateTopic(
       match_threshold: SIMILARITY_THRESHOLD,
       match_count: 1,
     });
-    if (error) console.warn('[findOrCreateTopic] RPC error:', error.message);
+    if (error) logger.warn(`[findOrCreateTopic] RPC error: ${error.message}`);
 
     if (matches && matches.length > 0) {
       const id = matches[0].id as string;
-      console.log(`[findOrCreateTopic] Vector match: "${matches[0].title}" (id: ${id})`);
+      logger.info(`[findOrCreateTopic] Vector match: "${matches[0].title}" (id: ${id})`);
       return mergeTopic(supabase, id, input, embedding);
     }
   }
@@ -229,12 +231,12 @@ export async function findOrCreateTopic(
     .ilike('title', input.title)
     .maybeSingle();
   if (exact) {
-    console.log(`[findOrCreateTopic] Exact match: "${input.title}" (id: ${exact.id})`);
+    logger.info(`[findOrCreateTopic] Exact match: "${input.title}" (id: ${exact.id})`);
     return mergeTopic(supabase, exact.id as string, input, embedding, exact as Record<string, unknown>);
   }
 
   // ── 3. Insert new topic ──────────────────────────────────────
-  console.log(`[findOrCreateTopic] Inserting new topic: "${input.title}"`);
+  logger.info(`[findOrCreateTopic] Inserting new topic: "${input.title}"`);
   const { data: inserted, error: insertErr } = await supabase
     .from('topics')
     .insert({
@@ -304,11 +306,11 @@ export async function findOrCreateTask(
       match_threshold: SIMILARITY_THRESHOLD,
       match_count: 1,
     });
-    if (error) console.warn('[findOrCreateTask] RPC error:', error.message);
+    if (error) logger.warn(`[findOrCreateTask] RPC error: ${error.message}`);
 
     if (matches && matches.length > 0) {
       const id = matches[0].id as string;
-      console.log(`[findOrCreateTask] Vector match: "${matches[0].name}" (id: ${id})`);
+      logger.info(`[findOrCreateTask] Vector match: "${matches[0].name}" (id: ${id})`);
       const result = await mergeTask(supabase, id, input, embedding);
       return { ...result, isNew: false };
     }
@@ -322,13 +324,13 @@ export async function findOrCreateTask(
     .ilike('name', input.name)
     .maybeSingle();
   if (exact) {
-    console.log(`[findOrCreateTask] Exact match: "${input.name}" (id: ${exact.id})`);
+    logger.info(`[findOrCreateTask] Exact match: "${input.name}" (id: ${exact.id})`);
     const result = await mergeTask(supabase, exact.id as string, input, embedding, exact as Record<string, unknown>);
     return { ...result, isNew: false };
   }
 
   // ── 3. Insert new task ───────────────────────────────────────
-  console.log(`[findOrCreateTask] Inserting new task: "${input.name}"`);
+  logger.info(`[findOrCreateTask] Inserting new task: "${input.name}"`);
   const { data: inserted, error: insertErr } = await supabase
     .from('tasks')
     .insert({
@@ -391,7 +393,7 @@ export async function enrollChildInSubject(
     { child_id: childId, subject_id: subjectId, is_active: true },
     { onConflict: 'child_id, subject_id' }
   );
-  if (error) console.error(`[enrollChildInSubject] Failed for subject ${subjectId}:`, error.message);
+  if (error) logger.error(`[enrollChildInSubject] Failed for subject ${subjectId}: ${error.message}`);
 }
 
 export async function enrollChildInTopic(
@@ -403,7 +405,7 @@ export async function enrollChildInTopic(
     { child_id: childId, topic_id: topicId, enrollment_source: 'manual', is_active: true },
     { onConflict: 'child_id, topic_id' }
   );
-  if (error) console.error(`[enrollChildInTopic] Failed for topic ${topicId}:`, error.message);
+  if (error) logger.error(`[enrollChildInTopic] Failed for topic ${topicId}: ${error.message}`);
 }
 /**
  * Insert a task_progress row for a child. Logs but does not throw on error
@@ -420,7 +422,7 @@ export async function insertTaskProgress(
     interest_level: 3,
   });
   if (error) {
-    console.error(`[insertTaskProgress] Failed for task ${input.taskId}:`, error.message);
+    logger.error(`[insertTaskProgress] Failed for task ${input.taskId}: ${error.message}`);
   }
 }
 
@@ -439,8 +441,59 @@ async function fetchRow(
     .eq('id', id)
     .maybeSingle();
   if (error) {
-    console.warn(`[fetchRow] Failed to fetch ${table} id=${id}:`, error.message);
+    logger.warn(`[fetchRow] Failed to fetch ${table} id=${id}: ${error.message}`);
     return null;
   }
   return data as unknown as Record<string, unknown> | null;
 }
+
+/**
+ * Synchronize activities for a task.
+ * Inserts any activities that don't already exist for this task.
+ */
+export async function syncActivities(
+  supabase: SupabaseClient,
+  taskId: string,
+  activities: Array<{ name: string; activity_type?: string; instructions?: string; materials?: string[] }>
+) {
+  logger.info(`[syncActivities] Syncing ${activities.length} activities for task ${taskId}`);
+  
+  // Fetch existing activities
+  const { data: existing, error: fetchErr } = await supabase
+    .from('activities')
+    .select('name')
+    .eq('task_id', taskId);
+    
+  if (fetchErr) {
+    logger.error(`[syncActivities] Failed to fetch existing activities: ${fetchErr.message}`);
+    return;
+  }
+  
+  const existingNames = new Set(existing?.map(a => a.name.toLowerCase()) || []);
+  
+  let orderIndex = existing?.length || 0;
+  
+  for (const act of activities) {
+    if (existingNames.has(act.name.toLowerCase())) {
+      continue; // Skip if it already exists
+    }
+    
+    const { error: insertErr } = await supabase.from('activities').insert({
+      task_id: taskId,
+      name: act.name,
+      type: act.activity_type || null, // In case 'type' is still expected in some places, we map activity_type to type as well
+      activity_type: act.activity_type || null,
+      instructions: act.instructions || null,
+      materials: act.materials || null,
+      order_index: orderIndex++,
+      is_active: true
+    });
+    
+    if (insertErr) {
+      logger.error(`[syncActivities] Failed to insert activity "${act.name}": ${insertErr.message}`);
+    } else {
+      logger.info(`[syncActivities] Inserted activity "${act.name}"`);
+    }
+  }
+}
+

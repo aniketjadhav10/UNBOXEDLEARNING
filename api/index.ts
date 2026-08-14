@@ -1,27 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // AI handlers
-import chatHandler from '../server/ai/chat';
-import generateSyllabusHandler from '../server/ai/generateSyllabus';
-import generateTasksHandler from '../server/ai/generateTasks';
-import generateTopicsHandler from '../server/ai/generateTopics';
+import chatHandler from '../server/ai/chat.js';
+import generateSyllabusHandler from '../server/ai/generateSyllabus.js';
+import generateTasksHandler from '../server/ai/generateTasks.js';
+import generateTopicsHandler from '../server/ai/generateTopics.js';
 
 // Cron handlers
-import dailyAgendaHandler from '../server/cron/daily-agenda';
-import eveningReportHandler from '../server/cron/evening-report';
-import weeklyPlannerHandler from '../server/cron/weekly-planner';
-import weeklyReportHandler from '../server/cron/weekly-report';
+import dailyAgendaHandler from '../server/cron/daily-agenda.js';
+import eveningReportHandler from '../server/cron/evening-report.js';
+import weeklyPlannerHandler from '../server/cron/weekly-planner.js';
+import weeklyReportHandler from '../server/cron/weekly-report.js';
 
 // Family handlers
-import inviteHandler from '../server/family/invite';
+import inviteHandler from '../server/family/invite.js';
 
 // Sync handlers
-import pushHandler from '../server/sync/push';
+import pushHandler from '../server/sync/push.js';
 
 // Tasks handlers
-import completeTaskHandler from '../server/tasks/complete';
-import createTaskHandler from '../server/tasks/create';
-import updateTaskHandler from '../server/tasks/update';
+import completeTaskHandler from '../server/tasks/complete.js';
+import createTaskHandler from '../server/tasks/create.js';
+import updateTaskHandler from '../server/tasks/update.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract path without query strings
@@ -39,23 +39,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    if (path.endsWith('/api/ai/chat')) return await chatHandler(req, res);
-    if (path.endsWith('/api/ai/generateSyllabus')) return await generateSyllabusHandler(req, res);
-    if (path.endsWith('/api/ai/generateTasks')) return await generateTasksHandler(req, res);
-    if (path.endsWith('/api/ai/generateTopics')) return await generateTopicsHandler(req, res);
+    const handle = (fn: any) => typeof fn === 'function' ? fn : fn.default;
+
+    if (path.endsWith('/api/ai/chat')) return await handle(chatHandler)(req, res);
+    if (path.endsWith('/api/ai/generateSyllabus')) return await handle(generateSyllabusHandler)(req, res);
+    if (path.endsWith('/api/ai/generateTasks')) return await handle(generateTasksHandler)(req, res);
+    if (path.endsWith('/api/ai/generateTopics')) return await handle(generateTopicsHandler)(req, res);
     
-    if (path.endsWith('/api/cron/daily-agenda')) return await dailyAgendaHandler(req, res);
-    if (path.endsWith('/api/cron/evening-report')) return await eveningReportHandler(req, res);
-    if (path.endsWith('/api/cron/weekly-planner')) return await weeklyPlannerHandler(req, res);
-    if (path.endsWith('/api/cron/weekly-report')) return await weeklyReportHandler(req, res);
+    if (path.endsWith('/api/cron/daily-agenda')) return await handle(dailyAgendaHandler)(req, res);
+    if (path.endsWith('/api/cron/evening-report')) return await handle(eveningReportHandler)(req, res);
+    if (path.endsWith('/api/cron/weekly-planner')) return await handle(weeklyPlannerHandler)(req, res);
+    if (path.endsWith('/api/cron/weekly-report')) return await handle(weeklyReportHandler)(req, res);
     
-    if (path.endsWith('/api/family/invite')) return await inviteHandler(req, res);
+    if (path.endsWith('/api/family/invite')) return await handle(inviteHandler)(req, res);
     
-    if (path.endsWith('/api/sync/push')) return await pushHandler(req, res);
+    if (path.endsWith('/api/sync/push')) return await handle(pushHandler)(req, res);
     
-    if (path.endsWith('/api/tasks/complete')) return await completeTaskHandler(req, res);
-    if (path.endsWith('/api/tasks/create')) return await createTaskHandler(req, res);
-    if (path.endsWith('/api/tasks/update')) return await updateTaskHandler(req, res);
+    if (path.endsWith('/api/tasks/complete')) return await handle(completeTaskHandler)(req, res);
+    if (path.endsWith('/api/tasks/create')) return await handle(createTaskHandler)(req, res);
+    if (path.endsWith('/api/tasks/update')) return await handle(updateTaskHandler)(req, res);
     
     return res.status(404).json({ error: 'API route not found: ' + path });
   } catch (error) {

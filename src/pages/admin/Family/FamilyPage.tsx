@@ -11,12 +11,15 @@ import {
   listFamilyInvitations,
   sendFamilyInvite,
   joinFamilyWithCode,
+  cancelFamilyInvitation,
+  removeFamilyMember,
+  leaveFamily,
   type FamilyMember,
   type FamilyInvitation,
   type ProfileWithFamily,
 } from '../../../services/familyService';
 import { useAdminStore } from '../../../store/useAdminStore';
-import { User, Mail, Shield, Plus, Copy, Check, Clock, Sparkles, UserPlus, Key } from 'lucide-react';
+import { User, Mail, Shield, Plus, Copy, Check, Clock, Sparkles, UserPlus, Key, Trash2, LogOut, X } from 'lucide-react';
 
 export function FamilyPage() {
   const [profile, setProfile] = useState<ProfileWithFamily | null>(null);
@@ -105,6 +108,11 @@ export function FamilyPage() {
           showToast({ message: `Invitation email sent to ${inviteEmail}`, type: 'success' });
           setIsInviteModalOpen(false);
           setInviteEmail('');
+        } else if (response.smtpError) {
+          // SMTP was attempted but failed
+          showToast({ message: `Email delivery failed: ${response.smtpError}`, type: 'error' });
+          // Still give them the code manually since it was registered
+          setDevModeCode(response.code);
         } else {
           // SMTP not configured - Local Dev Mode
           showToast({ message: 'Invitation registered in database (Local Dev Mode)', type: 'success' });
@@ -117,6 +125,49 @@ export function FamilyPage() {
       }
     } catch (error) {
       showToast({ message: error instanceof Error ? error.message : 'Unable to send invitation', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCancelInvite(invitationId: string) {
+    if (!confirm('Are you sure you want to cancel this invitation?')) return;
+    setLoading(true);
+    try {
+      await cancelFamilyInvitation(invitationId);
+      showToast({ message: 'Invitation canceled successfully', type: 'success' });
+      await loadProfile();
+    } catch (error: any) {
+      showToast({ message: error.message || 'Unable to cancel invitation', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRemoveMember(memberUserId: string) {
+    if (!confirm('Are you sure you want to remove this member from the workspace?')) return;
+    setLoading(true);
+    try {
+      await removeFamilyMember(memberUserId);
+      showToast({ message: 'Member removed successfully', type: 'success' });
+      await loadProfile();
+    } catch (error: any) {
+      showToast({ message: error.message || 'Unable to remove member', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLeaveFamily() {
+    if (!confirm('Are you sure you want to leave this family workspace? You will lose access to all shared children and curriculums.')) return;
+    setLoading(true);
+    try {
+      await leaveFamily();
+      showToast({ message: 'You have left the family workspace', type: 'success' });
+      // Reload profile to show creation options
+      await loadProfile();
+    } catch (error: any) {
+      showToast({ message: error.message || 'Unable to leave workspace', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -141,6 +192,9 @@ export function FamilyPage() {
   };
 
   if (loading && !profile) return <Loader />;
+
+  const currentUserMember = profile ? members.find(m => m.member_user_id === profile.id) : null;
+  const isOwner = currentUserMember?.member_role === 'owner';
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -173,16 +227,29 @@ export function FamilyPage() {
                   Children profiles, subjects, topics, and tasks are shared inside this workspace.
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setDevModeCode(null);
-                  setIsInviteModalOpen(true);
-                }}
-                className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-violet-700 shadow-md hover:bg-violet-50 hover:shadow-lg transition-all duration-200 active:scale-95 self-start md:self-center"
-              >
-                <Plus size={16} />
-                Add Family Member
-              </button>
+              <div className="flex flex-col md:flex-row gap-3 self-start md:self-center">
+                {isOwner && (
+                  <button
+                    onClick={() => {
+                      setDevModeCode(null);
+                      setIsInviteModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-violet-700 shadow-md hover:bg-violet-50 hover:shadow-lg transition-all duration-200 active:scale-95"
+                  >
+                    <Plus size={16} />
+                    Add Family Member
+                  </button>
+                )}
+                {!isOwner && (
+                  <button
+                    onClick={handleLeaveFamily}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-rose-500/90 hover:bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 border border-rose-400/50"
+                  >
+                    <LogOut size={16} />
+                    Leave Workspace
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -243,6 +310,16 @@ export function FamilyPage() {
                           {member.member_role === 'owner' ? 'Workspace Owner' : 'Parent / Educator'}
                         </span>
                       </div>
+                      
+                      {isOwner && profile?.id !== member.member_user_id && (
+                        <button
+                          onClick={() => handleRemoveMember(member.member_user_id)}
+                          title="Remove member"
+                          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors ml-auto self-center"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </article>
                   );
                 })}
@@ -297,6 +374,16 @@ export function FamilyPage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-pink-500 animate-pulse" />
                           Pending
                         </span>
+
+                        {isOwner && (
+                          <button
+                            onClick={() => handleCancelInvite(invite.id)}
+                            title="Cancel invitation"
+                            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors ml-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -415,10 +502,10 @@ export function FamilyPage() {
                 <div className="rounded-xl bg-violet-50 border border-violet-100 p-4 space-y-2">
                   <p className="text-xs font-semibold text-violet-800 flex items-center gap-1.5">
                     <Sparkles size={14} />
-                    Developer Mode Notice
+                    Manual Code Delivery
                   </p>
                   <p className="text-xs text-violet-700/80 leading-relaxed">
-                    The invitation was successfully registered in the database. Since SMTP email settings are not configured, copy the joining code below and share it with your partner manually:
+                    The invitation was successfully registered. Since we could not deliver the email automatically, please copy the secure joining code below and share it with your partner manually:
                   </p>
                   
                   <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-lg border border-violet-200/60 shadow-sm mt-3">
@@ -452,9 +539,9 @@ export function FamilyPage() {
               /* Standard email invite form state */
               <form onSubmit={handleSendInvite} className="space-y-4">
                 <InputField
-                  label="Partner's Gmail Address"
+                  label="Partner's Email Address"
                   onChange={(event) => setInviteEmail(event.target.value)}
-                  placeholder="partner@gmail.com"
+                  placeholder="partner@example.com"
                   required
                   type="email"
                   value={inviteEmail}
@@ -462,7 +549,7 @@ export function FamilyPage() {
                 />
 
                 <p className="text-[10px] text-ink/50 leading-relaxed">
-                  <strong>Important:</strong> The invited member must sign in to UnBoxed Learning using this email address via Google Auth to claim the workspace access.
+                  <strong>Important:</strong> The invited member must sign in to UnBoxed Learning using this email address via Email OTP to claim the workspace access.
                 </p>
 
                 <div className="flex justify-end gap-3 pt-2">

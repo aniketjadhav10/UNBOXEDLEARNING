@@ -55,18 +55,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let emailSent = false;
     let smtpError = '';
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpPort = Number(process.env.SMTP_PORT) || 587;
+    const smtpSecure = process.env.SMTP_SECURE === 'true';
     const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASSWORD;
-    const smtpFrom = process.env.SMTP_FROM ?? '"UnBoxed Learning" <invitations@unboxedlearning.com>';
+    const smtpPass = process.env.SMTP_PASS;
+    const smtpFrom = process.env.SMTP_FROM ?? `"UnBoxed Learning" <${smtpUser}>`;
 
     if (smtpHost && smtpUser && smtpPass) {
       try {
         const transporter = nodemailer.createTransport({
           host: smtpHost,
           port: smtpPort,
-          secure: smtpPort === 465,
+          secure: smtpSecure,
           auth: {
             user: smtpUser,
             pass: smtpPass,
@@ -105,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               <h3 style="color: #1e1b4b; font-size: 16px; font-weight: 700; margin-top: 32px; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">How to get started:</h3>
               <ol style="color: #475569; font-size: 15px; line-height: 1.7; margin: 0; padding-left: 20px;">
                 <li style="margin-bottom: 10px;">Visit <a href="${process.env.APP_URL ?? 'http://localhost:5173'}" style="color: #8b5cf6; font-weight: 600; text-decoration: none; border-bottom: 1px solid #ddd6fe;">UnBoxed Learning</a>.</li>
-                <li style="margin-bottom: 10px;">Sign in using your Google account (<strong>${email}</strong>).</li>
+                <li style="margin-bottom: 10px;">Sign in using your Email address (<strong>${email}</strong>) and enter the 6-digit one-time password (OTP) sent to you.</li>
                 <li style="margin-bottom: 10px;">Go to the <strong>Family</strong> page in the sidebar menu.</li>
                 <li style="margin-bottom: 10px;">Enter the joining code above and click <strong>Join Workspace</strong>.</li>
               </ol>

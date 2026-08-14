@@ -57,6 +57,7 @@ export async function fetchAllSubjectsFromLibrary(): Promise<DbSubject[]> {
     .from('subjects')
     .select('*')
     .eq('is_active', true)
+    .eq('is_global', true)
     .order('order_index', { ascending: true });
   if (error) throw error;
   return data as DbSubject[];

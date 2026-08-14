@@ -31,6 +31,9 @@ export interface SupabaseTask {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  parent_guide?: string | null;
+  learning_objective?: string | null;
+  materials_needed?: string[] | null;
 }
 
 // ── Raw Supabase row: task_progress ──────────────────────────

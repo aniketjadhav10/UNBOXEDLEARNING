@@ -1,0 +1,117 @@
+{
+  "families": [
+    "id uuid primary key default gen_random_uuid()",
+    "name text not null",
+    "created_by uuid not null references auth.users(id) on delete cascade",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "family_members": [
+    "id uuid primary key default gen_random_uuid()",
+    "family_id uuid not null references families(id) on delete cascade",
+    "user_id uuid not null references auth.users(id) on delete cascade",
+    "role text not null default 'parent' check (role in ('owner', 'parent'))",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "profiles": [
+    "id uuid primary key references auth.users(id) on delete cascade",
+    "display_name text",
+    "is_admin boolean not null default false",
+    "is_approved boolean not null default false",
+    "is_super_admin boolean not null default false",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "children": [
+    "id uuid primary key default gen_random_uuid()",
+    "user_id uuid not null references profiles(id) on delete cascade",
+    "name text not null",
+    "grade_level text not null",
+    "date_of_birth date",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "subjects": [
+    "id uuid primary key default gen_random_uuid()",
+    "child_id uuid not null references children(id) on delete cascade",
+    "name text not null",
+    "description text",
+    "color text not null default '#3f6b57'",
+    "order_index integer not null default 0",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "topics": [
+    "id uuid primary key default gen_random_uuid()",
+    "subject_id uuid not null references subjects(id) on delete cascade",
+    "title text not null",
+    "description text",
+    "difficulty_level text",
+    "age_group text",
+    "is_active boolean not null default true",
+    "order_index integer not null default 0",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "tasks": [
+    "id uuid primary key default gen_random_uuid()",
+    "topic_id uuid not null references topics(id) on delete cascade",
+    "name text not null",
+    "description text",
+    "difficulty_level text",
+    "age_group text",
+    "source_type text not null default 'manual' check (source_type in ('manual', 'ai_generated'))",
+    "order_index integer not null default 0",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "task_progress": [
+    "id uuid primary key default gen_random_uuid()",
+    "child_id uuid not null references children(id) on delete cascade",
+    "task_id uuid not null references tasks(id) on delete cascade",
+    "learning_stage learning_stage not null default 'Not_Started'",
+    "interest_level text",
+    "learned_count integer not null default 0",
+    "target_count integer not null default 5",
+    "last_practiced_at timestamptz",
+    "next_due_at timestamptz",
+    "repeat_interval integer",
+    "is_scheduled_this_week boolean not null default false",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "activities": [
+    "id uuid primary key default gen_random_uuid()",
+    "task_id uuid not null references tasks(id) on delete cascade",
+    "name text not null",
+    "type text",
+    "order_index integer not null default 0",
+    "is_active boolean not null default true",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "ai_inbox": [
+    "id uuid primary key default gen_random_uuid()",
+    "user_id uuid not null references profiles(id) on delete cascade",
+    "topic text not null",
+    "lesson jsonb not null",
+    "saved boolean not null default false",
+    "created_at timestamptz not null default now()",
+    "updated_at timestamptz not null default now()"
+  ],
+  "sync_queue": [
+    "id uuid primary key default gen_random_uuid()",
+    "user_id uuid not null references profiles(id) on delete cascade",
+    "endpoint text not null",
+    "method text not null check (method in ('POST', 'PATCH', 'DELETE'))",
+    "payload jsonb not null",
+    "synced_at timestamptz",
+    "created_at timestamptz not null default now()"
+  ]
+}

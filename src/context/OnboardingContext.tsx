@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 const STORAGE_KEY = 'onboarding_v1';
-export const TOTAL_STEPS = 6;
+export const TOTAL_STEPS = 5;
 
 // ── State shape ───────────────────────────────────────────────
 export interface OnboardingState {
@@ -22,8 +22,6 @@ export interface OnboardingState {
   children: { id: string; name: string }[];
   selectedChildId: string | null;
   coParentEmail: string;
-  assignedTasksCount: number;
-  generatedSubjectId: string | null;
 }
 
 const DEFAULT_STATE: OnboardingState = {
@@ -34,8 +32,6 @@ const DEFAULT_STATE: OnboardingState = {
   children: [],
   selectedChildId: null,
   coParentEmail: '',
-  assignedTasksCount: 0,
-  generatedSubjectId: null,
 };
 
 // ── Context shape ─────────────────────────────────────────────
@@ -45,7 +41,7 @@ interface OnboardingContextValue {
   goPrev: () => void;
   skipStep: () => void;
   update: (patch: Partial<OnboardingState>) => void;
-  markComplete: () => void;
+  markComplete: () => Promise<void>;
   reset: () => void;
 }
 
@@ -93,9 +89,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const markComplete = useCallback(() => {
+  const markComplete = useCallback(async () => {
     setState((s) => ({ ...s, completed: true }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, completed: true }));
+    try {
+      const { completeOnboarding } = await import('../services/onboardingService');
+      await completeOnboarding();
+    } catch (err) {
+      console.error('Failed to mark onboarding complete in DB:', err);
+    }
   }, [state]);
 
   const reset = useCallback(() => {
@@ -117,13 +119,4 @@ export function useOnboarding() {
   return ctx;
 }
 
-// ── Helper: is onboarding complete? ──────────────────────────
-export function isOnboardingComplete(): boolean {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    return JSON.parse(raw).completed === true;
-  } catch {
-    return false;
-  }
-}
+// Removed isOnboardingComplete helper since we use AuthContext (user.isOnboarded) now.
