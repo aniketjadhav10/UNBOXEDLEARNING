@@ -15,6 +15,62 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
+/** ISO date (YYYY-MM-DD) of the Monday of the week containing `d`. */
+function mondayOf(d: Date): string {
+  const date = new Date(d);
+  const day = date.getUTCDay(); // 0=Sun … 6=Sat
+  date.setUTCDate(date.getUTCDate() + (day === 0 ? -6 : 1 - day));
+  return date.toISOString().split('T')[0];
+}
+
+function addDays(isoDate: string, n: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Persist a weekly lesson plan + scheduled sessions for a child.
+ * Idempotent per (child, week): if a plan for this week already exists it is
+ * left untouched so re-runs don't duplicate sessions.
+ */
+async function persistWeeklyPlan(
+  child: { id: string; user_id: string | null },
+  taskIds: string[],
+  weekStart: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('lesson_plans')
+    .select('id')
+    .eq('child_id', child.id)
+    .eq('week_start_date', weekStart)
+    .limit(1);
+  if (existing && existing.length > 0) return; // plan already generated this week
+
+  const { data: plan, error: planErr } = await supabase
+    .from('lesson_plans')
+    .insert({
+      child_id: child.id,
+      title: `Week of ${weekStart}`,
+      week_start_date: weekStart,
+      status: 'active',
+      created_by: child.user_id,
+    })
+    .select('id')
+    .single();
+  if (planErr || !plan) return;
+
+  const sessions = taskIds.map((task_id, i) => ({
+    plan_id: plan.id,
+    child_id: child.id,
+    task_id,
+    scheduled_date: addDays(weekStart, i % 5), // spread across Mon–Fri
+    status: 'planned',
+    created_by: child.user_id,
+  }));
+  await supabase.from('scheduled_sessions').insert(sessions);
+}
+
 export async function GET(req: NextRequest) {
   if (
     process.env.CRON_SECRET &&
@@ -31,13 +87,14 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Select tasks due this week
     const { data: children } = await supabase
-      .from('children').select('id, name').order('created_at', { ascending: true });
+      .from('children').select('id, name, user_id').order('created_at', { ascending: true });
 
     if (!children || children.length === 0) {
       return NextResponse.json({ message: 'No children. Email skipped.' });
     }
 
-    // Build a weekly plan for each child
+    // Build (and persist) a weekly plan for each child
+    const weekStart = mondayOf(new Date());
     const weeklyPlans: Array<{ childName: string; tasks: string[] }> = [];
 
     for (const child of children) {
@@ -51,6 +108,10 @@ export async function GET(req: NextRequest) {
         .limit(10);
 
       if (!progress || progress.length === 0) continue;
+
+      const taskIds = progress.map((p: any) => p.task_id).filter(Boolean);
+      await persistWeeklyPlan({ id: child.id, user_id: child.user_id }, taskIds, weekStart);
+
       weeklyPlans.push({
         childName: child.name,
         tasks: progress.map((p: any) => p.tasks?.name).filter(Boolean),

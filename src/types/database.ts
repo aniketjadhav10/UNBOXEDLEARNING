@@ -57,6 +57,37 @@ export interface DbChildTopic {
   target_completion_date: string | null;
 }
 
+// ── Lesson planning / scheduling ─────────────────────────────
+export type SessionStatus = 'planned' | 'in_progress' | 'completed' | 'skipped';
+
+export interface DbLessonPlan {
+  id: string;
+  child_id: string;
+  title: string;
+  week_start_date: string | null;
+  status: 'active' | 'archived';
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbScheduledSession {
+  id: string;
+  plan_id: string | null;
+  child_id: string;
+  task_id: string | null;
+  topic_id: string | null;
+  scheduled_date: string;
+  start_time: string | null;
+  duration_minutes: number | null;
+  status: SessionStatus;
+  notes: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Global Content Tables ────────────────────────────────────
 
 export interface DbSubject {
