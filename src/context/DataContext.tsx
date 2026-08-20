@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
@@ -200,7 +201,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ── Transform raw rows → app types ───────────────────────────
 
-  const kids: AppKid[] = rawChildren.map((child, i) => {
+  const kids: AppKid[] = useMemo(() => rawChildren.map((child, i) => {
     // For now, assume child has access to all subjects fetched (since fetchAllAppData fetches subjects the child is enrolled in)
     const childSubjects  = rawSubjects;
     const childProgress  = taskProgress.filter((p) => p.child_id === child.id);
@@ -235,9 +236,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         achievements:        Math.floor(completedTasks / 3),
       },
     };
-  });
+  }), [rawChildren, rawSubjects, rawTopics, rawTasks, taskProgress]);
 
-  const subjects: AppSubject[] = rawSubjects.map((s) => {
+  const subjects: AppSubject[] = useMemo(() => rawSubjects.map((s) => {
     const subjectTopics = rawTopics.filter((t) => t.subject_id === s.id);
     const progress = computeSubjectProgress(s.id, rawTopics, rawTasks, taskProgress);
     return {
@@ -251,9 +252,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       topicsCount: subjectTopics.length,
       progress,
     };
-  });
+  }), [rawSubjects, rawTopics, rawTasks, taskProgress]);
 
-  const topics: AppTopic[] = rawTopics.map((t) => ({
+  const topics: AppTopic[] = useMemo(() => rawTopics.map((t) => ({
     id:          t.id,
     subjectId:   t.subject_id,
     title:       t.title,
@@ -261,9 +262,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     duration:    'Self-paced',
     difficulty:  normalizeDifficulty(t.difficulty_level),
     completed:   isTopicCompleted(t.id, rawTasks, taskProgress),
-  }));
+  })), [rawTopics, rawTasks, taskProgress]);
 
-  const tasks: AppTask[] = rawTasks.map((t) => {
+  const tasks: AppTask[] = useMemo(() => rawTasks.map((t) => {
     const prog = taskProgress.find((p) => p.task_id === t.id);
     return {
       id:          t.id,
@@ -274,26 +275,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       stage:       prog?.learning_stage ?? 'Not_Started',
       isScheduled: prog?.is_scheduled_this_week ?? false,
     };
-  });
+  }), [rawTasks, taskProgress]);
+
+  // Memoize the context value so consumers only re-render when data actually changes.
+  const value = useMemo<DataContextValue>(() => ({
+    kids,
+    subjects,
+    topics,
+    tasks,
+    taskProgress,
+    rawChildren,
+    rawSubjects,
+    rawTopics,
+    rawTasks,
+    loading,
+    error,
+    isEmpty: !loading && !error && rawChildren.length === 0,
+    refresh: load,
+  }), [kids, subjects, topics, tasks, taskProgress, rawChildren, rawSubjects, rawTopics, rawTasks, loading, error, load]);
 
   return (
-    <DataContext.Provider
-      value={{
-        kids,
-        subjects,
-        topics,
-        tasks,
-        taskProgress,
-        rawChildren,
-        rawSubjects,
-        rawTopics,
-        rawTasks,
-        loading,
-        error,
-        isEmpty: !loading && !error && rawChildren.length === 0,
-        refresh: load,
-      }}
-    >
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );

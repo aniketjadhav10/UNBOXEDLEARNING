@@ -5,14 +5,19 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 
 // Analytics Components
-import { LearningStageChart } from '../../components/analytics/LearningStageChart';
-import { SubjectMasteryChart } from '../../components/analytics/SubjectMasteryChart';
-import { InterestVsDifficultyChart } from '../../components/analytics/InterestVsDifficultyChart';
-import { WeeklyWorkloadChart } from '../../components/analytics/WeeklyWorkloadChart';
-import { SubjectEngagementChart } from '../../components/analytics/SubjectEngagementChart';
+import dynamic from 'next/dynamic';
 import { ConsistencyHeatmap } from '../../components/analytics/ConsistencyHeatmap';
 import { TaskBottlenecksTable } from '../../components/analytics/TaskBottlenecksTable';
 import { FadeInUp, StaggerContainer, StaggerItem, ScaleOnHover } from '../../components/motion/MotionWrappers';
+
+// recharts-backed charts are lazy-loaded so recharts ships in its own chunk,
+// off the reports page's initial bundle. A skeleton renders while each loads.
+const chartLoading = () => <SkeletonCard className="h-64" />;
+const LearningStageChart        = dynamic(() => import('../../components/analytics/LearningStageChart').then((m) => m.LearningStageChart), { ssr: false, loading: chartLoading });
+const SubjectMasteryChart       = dynamic(() => import('../../components/analytics/SubjectMasteryChart').then((m) => m.SubjectMasteryChart), { ssr: false, loading: chartLoading });
+const InterestVsDifficultyChart = dynamic(() => import('../../components/analytics/InterestVsDifficultyChart').then((m) => m.InterestVsDifficultyChart), { ssr: false, loading: chartLoading });
+const WeeklyWorkloadChart       = dynamic(() => import('../../components/analytics/WeeklyWorkloadChart').then((m) => m.WeeklyWorkloadChart), { ssr: false, loading: chartLoading });
+const SubjectEngagementChart    = dynamic(() => import('../../components/analytics/SubjectEngagementChart').then((m) => m.SubjectEngagementChart), { ssr: false, loading: chartLoading });
 
 export function ReportsPage() {
   const { kids, subjects, topics, loading, error, refresh } = useData();
