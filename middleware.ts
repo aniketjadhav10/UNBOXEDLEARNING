@@ -59,6 +59,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/api/cron') || // cron routes secured by CRON_SECRET header
+    pathname.startsWith('/api/mcp') || // MCP server secured by Bearer-token auth in-handler
     pathname === '/';
 
   // ── Redirect unauthenticated users to /login ─────────────

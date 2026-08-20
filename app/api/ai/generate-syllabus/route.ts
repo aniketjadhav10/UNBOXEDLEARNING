@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readString } from '@/lib/api-utils/http';
 import { createServerSupabase } from '@/lib/api-utils/supabase';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
+import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import {
   findOrCreateSubject,
   findOrCreateTopic,
@@ -69,6 +70,14 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  const ctx = { supabase, userId: user.id };
+  try {
+    await enforceRateLimit(ctx);
+  } catch (err) {
+    if (err instanceof RateLimitError) return new NextResponse(err.message, { status: 429 });
+    return new NextResponse('Rate limit check failed', { status: 500 });
+  }
+
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
   const encoder = new TextEncoder();
@@ -85,7 +94,7 @@ export async function POST(req: NextRequest) {
       // STEP 1: Director Agent
       await sendEvent({ status: 'planning', message: 'Director Agent: Planning high-level curriculum structure...' });
       const directorPrompt = buildDirectorPrompt({ sourceText, age, skillLevel, targetGrade, topicsCount });
-      const directorRaw = await generateJson(directorPrompt);
+      const directorRaw = await generateJson(directorPrompt, { ctx, operation: 'generate_syllabus' });
       const directorData = extractJson(directorRaw);
 
       const subjectSummary = emptySummary();
@@ -125,7 +134,7 @@ export async function POST(req: NextRequest) {
         await sendEvent({ status: 'writing', message: `SME Agent: Writing detailed lessons for batch ${chunkIndex + 1}/${topicChunks.length}...` });
         
         const smePrompt = buildSmePrompt({ topics: chunk, age, skillLevel, tasksPerTopic });
-        const smeRaw = await generateJson(smePrompt);
+        const smeRaw = await generateJson(smePrompt, { ctx, operation: 'generate_syllabus' });
         const smeData = extractJson(smeRaw);
         
         // Save each topic in this chunk

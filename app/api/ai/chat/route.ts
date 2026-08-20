@@ -5,7 +5,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendError } from '@/lib/api-utils/http';
 import { createServerSupabase } from '@/lib/api-utils/supabase';
-import { ai, MODEL_NAME, requireGeminiKey, getEmbedding } from '@/server/ai/aiClient';
+import { MODEL_NAME, requireGeminiKey, getEmbedding, generateContentTracked } from '@/server/ai/aiClient';
+import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
+import { tools } from '@/server/ai/tools';
+import { toGeminiFunctionDeclarations, dispatchToolCall } from '@/server/ai/tools/gemini';
 import { logger } from '@/server/logger';
 
 export async function POST(req: NextRequest) {
@@ -19,6 +22,9 @@ export async function POST(req: NextRequest) {
       logger.warn('Unauthorized access attempt in chat');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const ctx = { supabase, userId: user.id };
+    await enforceRateLimit(ctx);
 
     const body = await req.json();
     const { messages = [], sessionId, curriculumContext = false } = body;
@@ -120,8 +126,8 @@ Your goal is to assist parents and students with their educational journey.
 ${memoryContext}
 ${dbContext}
 When you learn an important new fact or preference about the user or their child, you MUST use the "save_user_memory" tool to remember it for future sessions.
-If the user asks about completed tasks, all tasks, or searches for a specific topic that isn't in the active curriculum state provided above, you MUST use the "search_curriculum_tasks" tool to search the database.
-When a user asks to mark a task as completed, practicing, or any other stage, you MUST use the "update_task_stage" tool to update it.
+If the user asks about completed tasks, all tasks, or searches for a specific topic that isn't in the active curriculum state provided above, you MUST use the "search_curriculum" tool to search the database.
+When a user asks to mark a task as completed, practicing, or any other stage, you MUST use the "update_task_stage" tool to update it. If the family has more than one child, pass the child's name as child_name.
 Respond nicely and concisely. You MUST format all your responses using Markdown.`;
 
     // 4. Format Messages
@@ -130,96 +136,40 @@ Respond nicely and concisely. You MUST format all your responses using Markdown.
       parts: [{ text: m.content }]
     }));
 
+    // Tools come from the shared registry (server/ai/tools) — the same
+    // definitions the MCP server exposes. One source, no duplication.
     const reqConfig: any = {
       systemInstruction,
-      tools: [{
-        functionDeclarations: [
-          {
-            name: 'save_user_memory',
-            description: 'Saves an important fact or preference about the user to their long-term memory.',
-            parameters: { type: 'OBJECT', properties: { fact: { type: 'STRING', description: 'The distinct fact to remember.' } }, required: ['fact'] }
-          },
-          {
-            name: 'search_curriculum_tasks',
-            description: 'Searches all curriculum tasks in the database for the user using semantic similarity.',
-            parameters: { type: 'OBJECT', properties: { query: { type: 'STRING', description: 'The search query or topic to look for.' } }, required: ['query'] }
-          },
-          {
-            name: 'update_task_stage',
-            description: 'Updates the learning stage of a specific task progress record.',
-            parameters: {
-              type: 'OBJECT',
-              properties: {
-                task_name: { type: 'STRING', description: 'The exact name of the task to update.' },
-                new_stage: { type: 'STRING', description: 'The new stage. Must be one of: Not_Started, Introduced, Practicing, Comfortable, Confident, Needs_Practice.' }
-              },
-              required: ['task_name', 'new_stage']
-            }
-          }
-        ]
-      }]
+      tools: [{ functionDeclarations: toGeminiFunctionDeclarations(tools) }],
     };
 
     logger.info('[chat] Calling Gemini...');
-    const response = await ai.models.generateContent({
+    const response = await generateContentTracked(ctx, {
       model: MODEL_NAME,
       contents: formattedMessages,
       config: reqConfig
-    });
+    }, 'chat');
 
     let aiResponseText = response.text || '';
     const functionCalls = response.functionCalls;
 
-    // 5. Handle Function Calls
+    // 5. Handle Function Calls — dispatched through the shared registry.
     if (functionCalls && functionCalls.length > 0) {
       const toolResponses = [];
 
       for (const call of functionCalls) {
-        if (call.name === 'save_user_memory') {
-          const fact = call.args?.fact;
-          if (fact) {
-            const factEmbedding = await getEmbedding(fact as string);
-            await supabase.from('user_memories').insert({ user_id: user.id, content: fact, embedding: factEmbedding });
-          }
-          toolResponses.push({ name: 'save_user_memory', response: { success: true } });
-        } else if (call.name === 'search_curriculum_tasks') {
-          const query = call.args?.query;
-          let searchResults = 'No results found.';
-          if (query) {
-            const qEmbedding = await getEmbedding(query as string);
-            if (qEmbedding) {
-              const { data: matchedTasks } = await supabase.rpc('match_tasks', {
-                query_embedding: qEmbedding, p_topic_id: null, match_threshold: 0.6, match_count: 5
-              });
-              if (matchedTasks && matchedTasks.length > 0) {
-                searchResults = matchedTasks.map((t: any) => `- Task: ${t.name}. Desc: ${t.description}`).join('\n');
-              }
-            }
-          }
-          toolResponses.push({ name: 'search_curriculum_tasks', response: { results: searchResults } });
-        } else if (call.name === 'update_task_stage') {
-          const taskName = call.args?.task_name;
-          const newStage = call.args?.new_stage;
-          let result = 'Failed to update task.';
-          const { data: userData } = await supabase.from('children').select('id').eq('user_id', user.id);
-          const children = userData || [];
-          if (taskName && newStage) {
-            const { data: tasks } = await supabase.from('tasks').select('id, name').ilike('name', `%${taskName}%`).limit(1);
-            if (tasks && tasks.length > 0) {
-              const { error } = await supabase.from('task_progress').update({ learning_stage: newStage }).eq('task_id', tasks[0].id).eq('child_id', children[0]?.id || null);
-              if (!error) result = `Successfully updated '${tasks[0].name}' to ${newStage}.`;
-            } else {
-              result = `Task '${taskName}' not found.`;
-            }
-          }
-          toolResponses.push({ name: 'update_task_stage', response: { results: result } });
-        }
+        const result = await dispatchToolCall(
+          call.name as string,
+          (call.args ?? {}) as Record<string, unknown>,
+          { supabase, userId: user.id },
+        );
+        toolResponses.push({ name: call.name, response: { result } });
       }
 
       if (!aiResponseText || toolResponses.length > 0) {
         formattedMessages.push({ role: 'model', parts: response.candidates?.[0]?.content?.parts || [] });
         formattedMessages.push({ role: 'user', parts: toolResponses.map(tr => ({ functionResponse: tr })) });
-        const followUp = await ai.models.generateContent({ model: MODEL_NAME, contents: formattedMessages, config: reqConfig });
+        const followUp = await generateContentTracked(ctx, { model: MODEL_NAME, contents: formattedMessages, config: reqConfig }, 'chat');
         aiResponseText = followUp.text || 'Done!';
       }
     }
@@ -232,6 +182,7 @@ Respond nicely and concisely. You MUST format all your responses using Markdown.
 
     return NextResponse.json({ success: true, text: aiResponseText });
   } catch (error: any) {
+    if (error instanceof RateLimitError) return sendError(error, 429);
     logger.error({ err: error, message: error?.message, stack: error?.stack }, '[chat] Request error');
     return sendError(error, 500);
   }

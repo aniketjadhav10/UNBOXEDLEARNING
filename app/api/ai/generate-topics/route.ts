@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendError, readString } from '@/lib/api-utils/http';
 import { createServerSupabase } from '@/lib/api-utils/supabase';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
+import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { findOrCreateTopic, findOrCreateTask, insertTaskProgress } from '@/server/ai/aiDb';
 import type { MergeAction } from '@/server/ai/aiDb';
 import { buildTopicsPrompt } from '@/server/ai/prompts/TopicsPrompt';
@@ -22,11 +23,16 @@ export async function POST(req: NextRequest) {
     const tasksPerTopic = Number(body?.tasks_per_topic) || 10;
     const childId       = body?.child_id        ? String(body.child_id)        : null;
 
+    const supabase = createServerSupabase(req);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = { supabase, userId: user.id };
+    await enforceRateLimit(ctx);
+
     const prompt = buildTopicsPrompt({ subjectName, ageGroup, topicsCount, tasksPerTopic });
-    const raw    = await generateJson(prompt);
+    const raw    = await generateJson(prompt, { ctx, operation: 'generate_topics' });
     const result = JSON.parse(raw);
 
-    const supabase     = createServerSupabase(req);
     const topicSummary = emptySummary();
     const taskSummary  = emptySummary();
     const processedTopics: { id: string; title: string; action: MergeAction }[] = [];
@@ -59,6 +65,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, topics: processedTopics, tasks: processedTasks, summary: { topics: topicSummary, tasks: taskSummary } });
   } catch (error) {
+    if (error instanceof RateLimitError) return sendError(error, 429);
     return sendError(error, 500);
   }
 }
