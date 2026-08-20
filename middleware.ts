@@ -103,7 +103,7 @@ export async function middleware(request: NextRequest) {
     const adminOnlyPaths = [
       '/kids', '/activities', '/tasks', '/scheduled', '/archived',
       '/syllabus-generator', '/reports', '/settings', '/family',
-      '/admin', '/system',
+      '/admin', '/system', '/planner',
     ];
     if (
       profile &&
