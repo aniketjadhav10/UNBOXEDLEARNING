@@ -140,7 +140,7 @@ export function LessonPage() {
   const resources: Array<{ type: string; url: string; title: string }> = task.resources ?? [];
 
   return (
-    <div className="max-w-2xl mx-auto pb-32 animate-fade-in">
+    <div className="max-w-2xl mx-auto pb-[22rem] animate-fade-in">
       {/* Back + breadcrumb */}
       <div className="mb-6">
         <button
