@@ -13,6 +13,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { useToast } from '../../store/useToastStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { fetchTaskWithBreadcrumb } from '../../services/curriculumService';
+import { SubmissionPanel } from '../../components/assessment/SubmissionPanel';
 import { supabase } from '../../services/supabase';
 import type { DbTaskWithBreadcrumb, LearningStage } from '../../types/database';
 
@@ -284,6 +285,11 @@ export function LessonPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Submit work for AI assessment */}
+      {childId && taskId && (
+        <SubmissionPanel childId={childId} taskId={taskId} onGraded={refresh} />
       )}
 
       {/* Session Log — fixed at bottom */}
