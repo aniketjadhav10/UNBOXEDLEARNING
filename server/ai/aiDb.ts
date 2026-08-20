@@ -210,7 +210,7 @@ export async function findOrCreateTopic(
   if (embedding) {
     const { data: matches, error } = await supabase.rpc('match_topics', {
       query_embedding: embedding,
-      subject_id_filter: input.subjectId,
+      p_subject_id: input.subjectId,
       match_threshold: SIMILARITY_THRESHOLD,
       match_count: 1,
     });
@@ -302,7 +302,7 @@ export async function findOrCreateTask(
   if (embedding) {
     const { data: matches, error } = await supabase.rpc('match_tasks', {
       query_embedding: embedding,
-      topic_id_filter: input.topicId,
+      p_topic_id: input.topicId,
       match_threshold: SIMILARITY_THRESHOLD,
       match_count: 1,
     });
