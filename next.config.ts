@@ -1,12 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Ignore ESLint and TypeScript errors during build for migration compatibility
+  // TypeScript build errors now block the build (the type gate is re-enabled).
+  // ESLint stays out of the build gate for now — the codebase intentionally uses
+  // `as any` for Supabase joins; lint runs in CI as non-blocking instead.
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   experimental: {
     serverActions: {

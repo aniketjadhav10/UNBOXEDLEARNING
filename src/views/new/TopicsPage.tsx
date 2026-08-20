@@ -189,7 +189,7 @@ export function TopicsPage() {
   if (error) return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <p className="text-sm text-red-400 mb-3">{error}</p>
-      <button onClick={loadData} className="px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors">
+      <button onClick={refresh} className="px-5 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors">
         Try Again
       </button>
     </div>

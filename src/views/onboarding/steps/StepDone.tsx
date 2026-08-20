@@ -12,10 +12,10 @@ export function StepDone() {
   const achievements = [
     state.familyName && { icon: '🏠', label: 'Family workspace created', value: state.familyName },
     state.children.length > 0 && { icon: '👶', label: 'Children added', value: `${state.children.length} learner${state.children.length !== 1 ? 's' : ''}` },
-    (state.generatedSubjectId || state.assignedTasksCount > 0) && {
+    (state.generatedSubjectId || (state.assignedTasksCount ?? 0) > 0) && {
       icon: '📚',
       label: 'Curriculum set up',
-      value: state.generatedSubjectId ? 'AI generated' : `${state.assignedTasksCount} task${state.assignedTasksCount !== 1 ? 's' : ''} assigned`,
+      value: state.generatedSubjectId ? 'AI generated' : `${state.assignedTasksCount ?? 0} task${(state.assignedTasksCount ?? 0) !== 1 ? 's' : ''} assigned`,
     },
     state.coParentEmail && { icon: '📧', label: 'Co-parent invited', value: state.coParentEmail },
   ].filter(Boolean) as { icon: string; label: string; value: string }[];

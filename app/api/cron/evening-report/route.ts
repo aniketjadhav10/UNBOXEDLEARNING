@@ -73,7 +73,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'No activity data. Email skipped.' });
     }
 
-    const htmlTemplate = renderEveningProgressEmail(childReports);
+    // Flatten per-child reports into the flat arrays the email template expects,
+    // labelling each task with the child's name when there is more than one child.
+    const multiChild = childReports.length > 1;
+    const label = (childName: string, name: string) => (multiChild ? `[${childName}] ${name}` : name);
+    const learnedToday = childReports.flatMap(r => r.learnedTasks.map(name => ({ name: label(r.childName, name) })));
+    const pending = childReports.flatMap(r => r.pendingTasks.map(name => ({ name: label(r.childName, name) })));
+    const htmlTemplate = renderEveningProgressEmail(learnedToday, pending, []);
 
     await transporter.sendMail({
       from: `"UnBoxed Learning" <${process.env.SMTP_USER}>`,
@@ -90,10 +96,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Evening report sent.' });
   } catch (error: any) {
-    await supabase.from('email_logs').insert({
-      status: 'failed', error_message: error.message, recipient: process.env.ADMIN_EMAIL,
-      tasks_learned_count: null, tasks_pending_count: null,
-    }).catch(() => {});
+    try {
+      await supabase.from('email_logs').insert({
+        status: 'failed', error_message: error.message, recipient: process.env.ADMIN_EMAIL,
+        tasks_learned_count: null, tasks_pending_count: null,
+      });
+    } catch { /* best-effort logging */ }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

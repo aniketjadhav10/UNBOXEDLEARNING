@@ -1,5 +1,5 @@
 export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || !import.meta.env.PROD) {
+  if (!('serviceWorker' in navigator) || process.env.NODE_ENV !== 'production') {
     return;
   }
 

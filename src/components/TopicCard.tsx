@@ -56,7 +56,7 @@ export function TopicCard({ topic, index, completed = false }: TopicCardProps) {
             >
               {topic.title}
             </h3>
-            <DifficultyBadge level={topic.difficulty_level || 'Beginner'} />
+            <DifficultyBadge level={(topic.difficulty_level || 'Beginner') as 'Beginner' | 'Intermediate' | 'Advanced'} />
           </div>
 
           {/* Description */}

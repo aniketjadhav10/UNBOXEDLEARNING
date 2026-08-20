@@ -81,10 +81,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: `Daily agenda sent with ${allActivities.length} activities.` });
   } catch (error: any) {
-    await supabase.from('email_logs').insert({
-      status: 'failed', error_message: error.message || 'Unknown error',
-      recipient: process.env.ADMIN_EMAIL, tasks_learned_count: null, tasks_pending_count: null,
-    }).catch(() => {});
+    try {
+      await supabase.from('email_logs').insert({
+        status: 'failed', error_message: error.message || 'Unknown error',
+        recipient: process.env.ADMIN_EMAIL, tasks_learned_count: null, tasks_pending_count: null,
+      });
+    } catch { /* best-effort logging */ }
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

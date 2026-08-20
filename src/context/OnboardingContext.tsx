@@ -22,6 +22,8 @@ export interface OnboardingState {
   children: { id: string; name: string }[];
   selectedChildId: string | null;
   coParentEmail: string;
+  generatedSubjectId?: string | null;
+  assignedTasksCount?: number;
 }
 
 const DEFAULT_STATE: OnboardingState = {

@@ -1,5 +1,5 @@
-import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, BookOpen, PenTool, Beaker, FileText, CheckSquare, MessageSquare, PlayCircle, Target } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, BookOpen, PenTool, Beaker, FileText, CheckSquare, MessageSquare, PlayCircle, Target, Info } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
 import { LearningStageBadge } from './LearningStageBadge';
@@ -18,6 +18,7 @@ interface TaskCardProps {
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
   topicName?: string;
+  expandableContent?: ReactNode;
 }
 
 function formatDate(iso?: string | null): string {
