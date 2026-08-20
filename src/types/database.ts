@@ -88,6 +88,37 @@ export interface DbScheduledSession {
   updated_at: string;
 }
 
+// ── Assessment / submissions ─────────────────────────────────
+export type SubmissionStatus = 'submitted' | 'grading' | 'graded' | 'returned';
+
+export interface DbSubmission {
+  id: string;
+  child_id: string;
+  task_id: string;
+  session_id: string | null;
+  content: string | null;
+  attachment_url: string | null;
+  status: SubmissionStatus;
+  submitted_by: string | null;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbAssessmentResult {
+  id: string;
+  submission_id: string;
+  score: number | null;
+  max_score: number;
+  passed: boolean | null;
+  feedback: string | null;
+  rubric: unknown;
+  graded_by: 'ai' | 'parent';
+  grader_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Global Content Tables ────────────────────────────────────
 
 export interface DbSubject {
