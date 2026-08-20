@@ -93,7 +93,7 @@ const searchCurriculum: ToolDef = {
     if (!embedding) return { results: [], note: 'Embedding unavailable — search skipped.' };
     const { data, error } = await supabase.rpc('match_tasks', {
       query_embedding: embedding,
-      p_topic_id: (args.topic_id as string) ?? null,
+      topic_id_filter: (args.topic_id as string) ?? null,
       match_threshold: 0.6,
       match_count: (args.limit as number) ?? 5,
     });
@@ -146,11 +146,12 @@ const searchMemory: ToolDef = {
     limit: z.number().int().min(1).max(10).optional(),
   },
   readOnly: true,
-  async handler(args, { supabase }) {
+  async handler(args, { supabase, userId }) {
     const embedding = await getEmbedding(args.query as string);
     if (!embedding) return [];
     const { data, error } = await supabase.rpc('match_user_memories', {
       query_embedding: embedding,
+      user_id_filter: userId,
       match_threshold: 0.7,
       match_count: (args.limit as number) ?? 5,
     });
