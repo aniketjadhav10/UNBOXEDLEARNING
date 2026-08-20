@@ -1,0 +1,293 @@
+import { useState } from 'react';
+import { Camera, FileText, Upload, Sparkles, CheckCircle2, Loader2, BrainCircuit, ListTree } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useToast } from '../../store/useToastStore';
+import { useData } from '../../context/DataContext';
+import { supabase } from '../../services/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+
+type InputType = 'text' | 'file' | 'camera';
+type GenerationStatus = 'idle' | 'planning' | 'chunking' | 'writing' | 'complete' | 'error';
+
+export function SyllabusGeneratorPage() {
+  const [inputType, setInputType] = useState<InputType>('text');
+  const [textInput, setTextInput] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [age, setAge] = useState<number>(10);
+  const [skillLevel, setSkillLevel] = useState<string>('Beginner');
+  const [targetGrade, setTargetGrade] = useState<string>('None');
+  const [isGlobal, setIsGlobal] = useState<boolean>(true);
+  const [topicsCount, setTopicsCount] = useState<number>(5);
+  const [tasksPerTopic, setTasksPerTopic] = useState<number>(3);
+
+  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle');
+  const [generationMessage, setGenerationMessage] = useState('');
+
+  const router = useRouter();
+  const toast = useToast();
+  const { kids } = useData();
+
+  const handleGenerate = async () => {
+    setGenerationStatus('planning');
+    setGenerationMessage('Initializing AI agents...');
+
+    try {
+      let sourceText = textInput;
+
+      if (inputType === 'file' || inputType === 'camera') {
+        toast.info('File/Camera parsing not fully implemented yet. Please use text for now.');
+        setGenerationStatus('idle');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch('/api/ai/generate-syllabus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session ? `Bearer ${session.access_token}` : ''
+        },
+        body: JSON.stringify({
+          sourceText, age, skillLevel,
+          targetGrade: targetGrade === 'None' ? null : targetGrade,
+          isGlobal, topicsCount, tasksPerTopic,
+          childId: kids[0]?.id
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate syllabus');
+      if (!response.body) throw new Error('No response body from stream');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let buffer = '';
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          let lineEndIndex;
+
+          while ((lineEndIndex = buffer.indexOf('\n\n')) >= 0) {
+            const eventStr = buffer.slice(0, lineEndIndex);
+            buffer = buffer.slice(lineEndIndex + 2);
+
+            if (eventStr.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(eventStr.replace('data: ', ''));
+                setGenerationStatus(data.status);
+                setGenerationMessage(data.message || '');
+
+                if (data.status === 'complete') {
+                  toast.success('Syllabus generated successfully!');
+                  if (data.subjectId) {
+                    router.push(`/subjects/${data.subjectId}/topics`);
+                  } else {
+                    router.push('/subjects');
+                  }
+                  return;
+                } else if (data.status === 'error') {
+                  throw new Error(data.message);
+                }
+              } catch (e) {
+                console.error("Error parsing stream chunk", e);
+              }
+            }
+          }
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Error generating syllabus:', error);
+      toast.error(error.message || 'An error occurred while generating the syllabus.');
+      setGenerationStatus('error');
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) setFile(e.target.files[0]);
+  };
+
+  const isGenerating = generationStatus !== 'idle' && generationStatus !== 'error' && generationStatus !== 'complete';
+
+  return (
+    <div className="max-w-4xl mx-auto pb-24">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <div className="p-2 bg-violet-100 rounded-xl">
+            <Sparkles className="w-8 h-8 text-violet-600" />
+          </div>
+          AI Syllabus Generator
+        </h1>
+        <p className="mt-2 text-gray-600">
+          Generate a comprehensive syllabus (subjects, topics, and tasks) using our multi-agent AI framework.
+        </p>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 relative overflow-hidden">
+
+        {/* Progress Overlay */}
+        <AnimatePresence>
+          {isGenerating && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8"
+            >
+              <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-violet-100 p-8 flex flex-col items-center text-center">
+
+                {generationStatus === 'planning' && <BrainCircuit className="w-16 h-16 text-violet-500 animate-pulse mb-4" />}
+                {generationStatus === 'chunking' && <ListTree className="w-16 h-16 text-blue-500 animate-bounce mb-4" />}
+                {generationStatus === 'writing' && <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-4" />}
+
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Generating Curriculum</h3>
+
+                <div className="w-full bg-gray-100 rounded-full h-2 mb-4 overflow-hidden">
+                  <motion.div
+                    className="bg-gradient-to-r from-violet-500 to-indigo-500 h-full rounded-full"
+                    initial={{ width: "10%" }}
+                    animate={{ width: generationStatus === 'planning' ? '30%' : generationStatus === 'chunking' ? '50%' : '85%' }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+
+                <p className="text-gray-600 font-medium">{generationMessage}</p>
+                <p className="text-xs text-gray-400 mt-4">This usually takes 15-30 seconds depending on the number of topics.</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Input Type Selector */}
+        <div className="mb-8">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">Source Material</label>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setInputType('text')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 font-medium transition-all ${inputType === 'text'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+                }`}
+            >
+              <FileText className="w-5 h-5" /> Raw Text
+            </button>
+            <button
+              onClick={() => setInputType('file')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 font-medium transition-all ${inputType === 'file'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+                }`}
+            >
+              <Upload className="w-5 h-5" /> Upload PDF/Photo
+            </button>
+            <button
+              onClick={() => setInputType('camera')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 font-medium transition-all ${inputType === 'camera'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+                }`}
+            >
+              <Camera className="w-5 h-5" /> Camera Photo
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Input Area */}
+        <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-100 min-h-[200px]">
+          {inputType === 'text' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paste Syllabus / Curriculum Text
+              </label>
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Paste the educational content or curriculum outline here..."
+                className="w-full h-40 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all resize-none"
+              />
+            </motion.div>
+          )}
+
+          {inputType === 'file' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors relative cursor-pointer">
+              <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+              <Upload className="w-8 h-8 text-gray-400 mb-2" />
+              <p className="text-sm font-medium text-gray-600">{file ? file.name : "Click or drag to upload PDF / Photo"}</p>
+            </motion.div>
+          )}
+          {inputType === 'camera' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+              <Camera className="w-8 h-8 text-gray-400 mb-2" />
+              <p className="text-sm font-medium text-gray-600">Camera placeholder</p>
+            </motion.div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Target Age</label>
+            <input type="number" min={3} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value) || 3)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Topics Count</label>
+            <input type="number" min={1} max={50} value={topicsCount} onChange={(e) => setTopicsCount(parseInt(e.target.value) || 1)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tasks per Topic</label>
+            <input type="number" min={1} max={10} value={tasksPerTopic} onChange={(e) => setTasksPerTopic(parseInt(e.target.value) || 1)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Skill Level</label>
+            <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Align with Standard Grade?</label>
+            <select value={targetGrade} onChange={(e) => setTargetGrade(e.target.value)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all">
+              <option value="None">No standard alignment</option>
+              <option value="Preschool">Preschool</option>
+              <option value="Grade 1">Grade 1</option>
+              <option value="Grade 5">Grade 5</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-8 p-4 bg-violet-50 border border-violet-100 rounded-xl flex items-start gap-3">
+          <input type="checkbox" id="isGlobal" checked={isGlobal} onChange={(e) => setIsGlobal(e.target.checked)} className="mt-1 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 cursor-pointer" />
+          <div>
+            <label htmlFor="isGlobal" className="block text-sm font-bold text-violet-900 cursor-pointer">Share this syllabus with the community?</label>
+            <p className="text-xs text-violet-700 mt-1">If checked, this syllabus will be added to the Global Library.</p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating || (inputType === 'text' && !textInput) || (inputType === 'file' && !file)}
+          className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex justify-center items-center gap-2"
+        >
+          {isGenerating ? (
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              Generate Syllabus
+            </>
+          )}
+        </button>
+
+      </div>
+    </div>
+  );
+}

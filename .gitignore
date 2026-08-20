@@ -12,3 +12,4 @@ yarn-debug.log*
 .vercel
 .vscode/
 .env.example
+.next

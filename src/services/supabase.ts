@@ -1,20 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from '../utils/env';
+import { createBrowserClient } from '@supabase/ssr';
 
-if (!env.supabaseUrl || !env.supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables. Auth calls will fail until .env.local is configured.');
-}
-
-export const supabase = createClient(
-  env.supabaseUrl || 'https://example.supabase.co',
-  env.supabaseAnonKey || 'missing-anon-key',
-  {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-  },
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function sendEmailOtp(email: string) {

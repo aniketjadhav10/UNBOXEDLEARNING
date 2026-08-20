@@ -31,9 +31,16 @@ export interface SupabaseTask {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Phase 1 new fields
+  task_type?: 'lesson' | 'quiz' | 'project' | 'reading' | 'worksheet' | 'experiment' | 'discussion';
+  instructions?: string | null;
   parent_guide?: string | null;
-  learning_objective?: string | null;
   materials_needed?: string[] | null;
+  estimated_minutes?: number;
+  learning_objective?: string | null;
+  assessment_criteria?: string | null;
+  resources?: Array<{ type: string; url: string; title: string }>;
+  is_assessment?: boolean;
 }
 
 // ── Raw Supabase row: task_progress ──────────────────────────

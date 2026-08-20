@@ -3,7 +3,7 @@ import { MessageSquare, X, Maximize2, Minimize2, Menu, Trash2 } from 'lucide-rea
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatWindow } from './ChatWindow';
 import { chatService, ChatSession } from '../../services/chatService';
-import { useLocation } from 'react-router-dom';
+import { usePathname } from 'next/navigation';
 
 export function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,8 +13,8 @@ export function FloatingChat() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   
   // Don't show floating chat on the dedicated chat page
-  const location = useLocation();
-  if (location.pathname === '/chat') {
+  const pathname = usePathname();
+  if (pathname === '/chat') {
     return null;
   }
 

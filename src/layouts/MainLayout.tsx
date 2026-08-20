@@ -1,14 +1,13 @@
 // ============================================================
 // MainLayout — Root layout: Sidebar + Navbar + Content area
+// Updated for Next.js: uses usePathname/useRouter instead of react-router-dom
 // ============================================================
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+'use client';
+import { useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 import { PageTransition } from '../components/motion/PageTransition';
-import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
 import { FloatingChat } from '../components/chat/FloatingChat';
 
 /* Map path segments → readable page titles */
@@ -33,7 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 function usePageTitle(): string {
-  const { pathname } = useLocation();
+  const pathname = usePathname();
   const segments = pathname.split('/').filter(Boolean);
   // Handle /subjects/:id/topics
   if (segments[0] === 'subjects' && segments[2] === 'topics') return 'Topics';
@@ -42,10 +41,10 @@ function usePageTitle(): string {
   return PAGE_TITLES[key] ?? 'UnBoxed Learning';
 }
 
-export function MainLayout() {
+export function MainLayout({ children }: { children?: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pageTitle = usePageTitle();
-  const navigate = useNavigate();
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#f5f3ff]">
       {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -67,7 +66,7 @@ export function MainLayout() {
           id="main-content"
           className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
         >
-          <PageTransition />
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
 
@@ -76,4 +75,3 @@ export function MainLayout() {
     </div>
   );
 }
-

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { supabase } from '../services/supabase';
+import { getCache, setCache, clearCache } from '../services/cacheService';
 import {
   avatarColor,
   colorToGradient,
@@ -127,30 +128,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error,         setError]         = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // We only set loading if we don't have data yet
+    if (rawChildren.length === 0) setLoading(true);
     setError(null);
 
     // ── Guard: only fetch when a Supabase session exists ──────
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      // User is not authenticated → AppRoutes will show LoginPage
       setLoading(false);
       return;
     }
 
+    // 1. Try to load from IndexedDB cache first for instant UI
+    try {
+      const cached = await getCache<any>('all_app_data');
+      if (cached && cached.children) {
+        setRawChildren(cached.children);
+        setRawSubjects(cached.subjects);
+        setRawTopics(cached.topics);
+        setRawTasks(cached.tasks);
+        setTaskProgress(cached.taskProgress);
+        setLoading(false); // Stop loading immediately!
+      }
+    } catch(err) {
+      console.warn("Failed to load from cache", err);
+    }
+
+    // 2. Fetch fresh data from Supabase in background
     try {
       const result = await fetchAllAppData();
+      
+      // Update state with fresh data
       setRawChildren(result.children);
       setRawSubjects(result.subjects);
       setRawTopics(result.topics);
       setRawTasks(result.tasks);
       setTaskProgress(result.taskProgress);
+      
+      // Update cache
+      await setCache('all_app_data', result);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load data from Supabase');
+      // Only set error if we don't have cached data to show
+      if (rawChildren.length === 0) {
+        setError(err instanceof Error ? err.message : 'Failed to load data from Supabase');
+      } else {
+        console.warn("Background fetch failed, but continuing to show cached data.");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [rawChildren.length]);
 
   // Re-fetch whenever the auth session changes (login / logout)
   useEffect(() => {
@@ -164,6 +191,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setRawTopics([]);
           setRawTasks([]);
           setTaskProgress([]);
+          clearCache();
         }
       },
     );

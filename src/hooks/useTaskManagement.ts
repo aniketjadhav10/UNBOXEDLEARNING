@@ -49,7 +49,7 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
     setActiveTab(defaultTab);
   }, [defaultTab]);
   const [darkMode, setDarkMode] = useState(() =>
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false
   );
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const toastIdRef = useRef(0);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 
-const skipAdminAuth = import.meta.env.VITE_SKIP_ADMIN_AUTH === 'true';
+const skipAdminAuth = process.env.NEXT_PUBLIC_SKIP_ADMIN_AUTH === 'true';
 
 export function useAdminAuth() {
   const [loading, setLoading] = useState(!skipAdminAuth);

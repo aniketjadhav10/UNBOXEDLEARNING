@@ -1,12 +1,12 @@
 import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 export function BackButton({ className = '' }: { className?: string }) {
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
     <button
-      onClick={() => navigate(-1)}
+      onClick={() => router.back()}
       className={`flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-violet-600 transition-colors ${className}`}
       aria-label="Go back"
     >

@@ -23,7 +23,8 @@ import {
   LibraryBig,
   ShieldCheck,
 } from 'lucide-react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useMemo, useState, useEffect } from 'react';
@@ -115,35 +116,31 @@ function NavGroup({ item, currentPath, onClose }: { item: NavItem; currentPath: 
             className="overflow-hidden"
           >
             <div className="mt-1 pl-4 pr-1 space-y-0.5">
-              {item.subItems.map((sub) => (
-                <NavLink
-                  key={sub.path}
-                  to={sub.path}
-                  end={sub.path === '/'}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    [
+              {item.subItems.map((sub) => {
+                const isSubActive = sub.path === '/' ? currentPath === '/' : currentPath.startsWith(sub.path);
+                return (
+                  <Link
+                    key={sub.path}
+                    href={sub.path}
+                    onClick={onClose}
+                    className={[
                       'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200',
-                      isActive
+                      isSubActive
                         ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
                         : 'text-violet-200/80 hover:bg-white/10 hover:text-white border border-transparent',
-                    ].join(' ')
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span
-                        className={[
-                          'w-0.5 h-3.5 rounded-full transition-all duration-200 flex-shrink-0',
-                          isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
-                        ].join(' ')}
-                      />
-                      <sub.icon size={15} />
-                      {sub.label}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+                    ].join(' ')}
+                  >
+                    <span
+                      className={[
+                        'w-0.5 h-3.5 rounded-full transition-all duration-200 flex-shrink-0',
+                        isSubActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
+                      ].join(' ')}
+                    />
+                    <sub.icon size={15} />
+                    {sub.label}
+                  </Link>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -160,8 +157,8 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { isAdmin, isSuperAdmin, signOut } = useAuth();
   const { kids } = useData();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const navItems = useMemo(() => {
     let items = isAdmin ? [...ADMIN_NAV] : [...STUDENT_NAV];
@@ -202,7 +199,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   async function handleSignOut() {
     await signOut();
-    navigate('/login', { replace: true });
+    router.replace('/login');
   }
 
   return (
@@ -269,38 +266,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               }}
             >
               {item.subItems ? (
-                <NavGroup item={item} currentPath={location.pathname} onClose={onClose} />
+                <NavGroup item={item} currentPath={pathname} onClose={onClose} />
               ) : (
-                <NavLink
-                  to={item.path!}
-                  end={item.path === '/'}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    [
-                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mb-1',
-                      isActive
-                        ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
-                        : 'text-violet-200 hover:bg-white/10 hover:text-white border border-transparent',
-                    ].join(' ')
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
+                (() => {
+                  const isItemActive = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path!);
+                  return (
+                    <Link
+                      href={item.path!}
+                      onClick={onClose}
+                      className={[
+                        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 mb-1',
+                        isItemActive
+                          ? 'bg-gradient-to-r from-violet-500/25 to-indigo-500/10 text-white border border-violet-400/30 shadow-sm'
+                          : 'text-violet-200 hover:bg-white/10 hover:text-white border border-transparent',
+                      ].join(' ')}
+                    >
                       {/* Active indicator bar */}
                       <span
                         className={[
                           'w-0.5 h-4 rounded-full transition-all duration-200 flex-shrink-0',
-                          isActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
+                          isItemActive ? 'bg-gradient-to-b from-violet-300 to-indigo-300 shadow-glow' : 'bg-transparent',
                         ].join(' ')}
                       />
                       <item.icon size={17} />
                       {item.label}
-                      {isActive && (
+                      {isItemActive && (
                         <ChevronLeft size={14} className="ml-auto rotate-180 text-violet-300" />
                       )}
-                    </>
-                  )}
-                </NavLink>
+                    </Link>
+                  );
+                })()
               )}
             </motion.div>
           ))}

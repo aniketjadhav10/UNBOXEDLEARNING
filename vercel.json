@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "@vercel/node@3.2.20"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.ts" }
-  ],
   "crons": [
     {
       "path": "/api/cron/daily-agenda",
