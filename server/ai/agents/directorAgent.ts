@@ -10,7 +10,12 @@ Source Material:
 
 Your task:
 1. Extract the single overarching subject.
-2. Generate exactly [TopicsCount] distinct, logically sequenced topics for that subject.
+2. Classify the subject into exactly ONE development_domain (whole-child framework):
+   academic | social_emotional | physical | creative | life_skills | character | digital
+   (e.g. math/reading/science = academic; PE/yoga = physical; art/music = creative;
+    empathy/feelings = social_emotional; cooking/money = life_skills; coding/online safety = digital;
+    integrity/responsibility = character).
+3. Generate exactly [TopicsCount] distinct, logically sequenced topics for that subject.
 
 Topic Requirements:
 - Represent one coherent concept
@@ -27,7 +32,8 @@ Return ONLY valid JSON matching this structure:
 {
   "subject": {
     "name": "Subject Name",
-    "description": "A brief description of the subject"
+    "description": "A brief description of the subject",
+    "development_domain": "academic"
   },
   "topics": [
     {

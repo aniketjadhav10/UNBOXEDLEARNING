@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
         childId,
         userId: user.id,
         is_global: isGlobal,
+        developmentDomain: directorData.subject.development_domain,
       });
       tally(subjectSummary, subjectResult.action);
       const subjectId = subjectResult.id;

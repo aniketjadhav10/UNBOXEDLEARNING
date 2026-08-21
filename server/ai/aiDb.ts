@@ -14,6 +14,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getEmbedding, SIMILARITY_THRESHOLD } from './aiClient';
 import { logger } from '../logger';
 
+/** Valid 360° development domains (keep in sync with subjects.development_domain). */
+const VALID_DOMAINS = ['academic', 'social_emotional', 'physical', 'creative', 'life_skills', 'character', 'digital'];
+function normalizeDomain(d?: string): string {
+  return d && VALID_DOMAINS.includes(d) ? d : 'academic';
+}
+
 // ---------------------------------------------------------------------------
 // Shared result type
 // ---------------------------------------------------------------------------
@@ -39,6 +45,7 @@ export interface SubjectInput {
   userId: string;
   ageGroup?: string;
   is_global?: boolean;
+  developmentDomain?: string;
 }
 
 export interface TopicInput {
@@ -168,6 +175,7 @@ export async function findOrCreateSubject(
       created_by: input.userId,
       is_global: input.is_global ?? false,
       is_active: true,
+      development_domain: normalizeDomain(input.developmentDomain),
       embedding,
     })
     .select()
