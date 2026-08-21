@@ -2,6 +2,7 @@ export const directorPrompt = `\
 You are an expert homeschool curriculum director. 
 Given the source material, generate a high-level curriculum outline for a [Age]-year-old learner at a [SkillLevel] skill level.
 [TargetGradeInstruction]
+[InterestsInstruction]
 
 Source Material:
 """
@@ -56,9 +57,14 @@ export function buildDirectorPrompt(params: {
   skillLevel: string;
   targetGrade: string | null;
   topicsCount: number;
+  interests?: string[];
 }): string {
   const targetGradeInstruction = params.targetGrade
     ? `\nIMPORTANT: Align with standard curriculum requirements for **${params.targetGrade}**.`
+    : '';
+
+  const interestsInstruction = params.interests && params.interests.length
+    ? `\nThe child is especially interested in: ${params.interests.join(', ')}. Where natural, weave these interests into topic themes and examples to make the curriculum engaging.`
     : '';
 
   return directorPrompt
@@ -66,5 +72,6 @@ export function buildDirectorPrompt(params: {
     .replaceAll('[Age]', String(params.age))
     .replaceAll('[SkillLevel]', params.skillLevel)
     .replaceAll('[TargetGradeInstruction]', targetGradeInstruction)
+    .replaceAll('[InterestsInstruction]', interestsInstruction)
     .replaceAll('[TopicsCount]', String(params.topicsCount));
 }

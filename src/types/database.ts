@@ -31,6 +31,8 @@ export interface DbChild {
   name: string;
   grade_level: string;
   date_of_birth: string | null;
+  interests: string[];
+  learning_style: string | null;
   created_at: string;
   updated_at: string;
 }

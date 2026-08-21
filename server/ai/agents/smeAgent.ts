@@ -1,6 +1,7 @@
 export const smePrompt = `\
 You are an expert homeschool Subject Matter Expert.
 You have been provided with a list of topics for a [Age]-year-old learner at a [SkillLevel] skill level.
+[InterestsInstruction]
 
 Your task is to generate exactly [TasksCount] highly detailed, practical learning tasks for EACH topic provided.
 
@@ -66,12 +67,18 @@ export function buildSmePrompt(params: {
   age: number;
   skillLevel: string;
   tasksPerTopic: number;
+  interests?: string[];
 }): string {
   const topicsJson = JSON.stringify(params.topics.map(t => ({ title: t.title, description: t.description, learning_objectives: t.learning_objectives })), null, 2);
+
+  const interestsInstruction = params.interests && params.interests.length
+    ? `Tailor tasks and activities to a child interested in: ${params.interests.join(', ')} — use these as themes for examples, projects, and hooks.`
+    : '';
 
   return smePrompt
     .replaceAll('[TopicsJson]', topicsJson)
     .replaceAll('[Age]', String(params.age))
     .replaceAll('[SkillLevel]', params.skillLevel)
+    .replaceAll('[InterestsInstruction]', interestsInstruction)
     .replaceAll('[TasksCount]', String(params.tasksPerTopic));
 }

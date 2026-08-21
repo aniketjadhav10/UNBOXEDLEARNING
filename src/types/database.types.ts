@@ -369,6 +369,8 @@ export type Database = {
           date_of_birth: string | null
           family_id: string | null
           grade_level: string
+          interests: string[]
+          learning_style: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -381,6 +383,8 @@ export type Database = {
           date_of_birth?: string | null
           family_id?: string | null
           grade_level: string
+          interests?: string[]
+          learning_style?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -393,6 +397,8 @@ export type Database = {
           date_of_birth?: string | null
           family_id?: string | null
           grade_level?: string
+          interests?: string[]
+          learning_style?: string | null
           id?: string
           is_active?: boolean | null
           name?: string

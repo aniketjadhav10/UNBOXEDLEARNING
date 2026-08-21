@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
   const skillLevel    = body?.skillLevel ? String(body.skillLevel) : 'Beginner';
   const targetGrade   = body?.targetGrade ? String(body.targetGrade) : null;
   const isGlobal      = body?.isGlobal === true;
+  const interests     = Array.isArray(body?.interests) ? body.interests.map((x: any) => String(x)) : [];
 
   const supabase = await createServerSupabase();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
       
       // STEP 1: Director Agent
       await sendEvent({ status: 'planning', message: 'Director Agent: Planning high-level curriculum structure...' });
-      const directorPrompt = buildDirectorPrompt({ sourceText, age, skillLevel, targetGrade, topicsCount });
+      const directorPrompt = buildDirectorPrompt({ sourceText, age, skillLevel, targetGrade, topicsCount, interests });
       const directorRaw = await generateJson(directorPrompt, { ctx, operation: 'generate_syllabus' });
       const directorData = extractJson(directorRaw);
 
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       const chunkPromises = topicChunks.map(async (chunk, chunkIndex) => {
         await sendEvent({ status: 'writing', message: `SME Agent: Writing detailed lessons for batch ${chunkIndex + 1}/${topicChunks.length}...` });
         
-        const smePrompt = buildSmePrompt({ topics: chunk, age, skillLevel, tasksPerTopic });
+        const smePrompt = buildSmePrompt({ topics: chunk, age, skillLevel, tasksPerTopic, interests });
         const smeRaw = await generateJson(smePrompt, { ctx, operation: 'generate_syllabus' });
         const smeData = extractJson(smeRaw);
         

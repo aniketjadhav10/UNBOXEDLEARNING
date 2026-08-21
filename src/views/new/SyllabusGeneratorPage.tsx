@@ -16,7 +16,8 @@ export function SyllabusGeneratorPage() {
   const [age, setAge] = useState<number>(10);
   const [skillLevel, setSkillLevel] = useState<string>('Beginner');
   const [targetGrade, setTargetGrade] = useState<string>('None');
-  const [isGlobal, setIsGlobal] = useState<boolean>(true);
+  const isGlobal = false; // curated model: generation is private; admins promote to the shared library
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [topicsCount, setTopicsCount] = useState<number>(5);
   const [tasksPerTopic, setTasksPerTopic] = useState<number>(3);
 
@@ -40,6 +41,9 @@ export function SyllabusGeneratorPage() {
         return;
       }
 
+      const activeChildId = selectedChildId || kids[0]?.id;
+      const selectedKid = kids.find((k) => k.id === activeChildId);
+
       const { data: { session } } = await supabase.auth.getSession();
 
       const response = await fetch('/api/ai/generate-syllabus', {
@@ -52,7 +56,8 @@ export function SyllabusGeneratorPage() {
           sourceText, age, skillLevel,
           targetGrade: targetGrade === 'None' ? null : targetGrade,
           isGlobal, topicsCount, tasksPerTopic,
-          childId: kids[0]?.id
+          childId: activeChildId || undefined,
+          interests: selectedKid?.interests ?? [],
         }),
       });
 
@@ -227,6 +232,28 @@ export function SyllabusGeneratorPage() {
           )}
         </div>
 
+        {kids.length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Generate for child</label>
+            <select
+              value={selectedChildId || kids[0]?.id || ''}
+              onChange={(e) => {
+                setSelectedChildId(e.target.value);
+                const k = kids.find((x) => x.id === e.target.value);
+                if (k) setAge(k.age);
+              }}
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+            >
+              {kids.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.name}{k.interests.length ? ` · interests: ${k.interests.join(', ')}` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Age and interests are taken from this child to personalize the curriculum.</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Target Age</label>
@@ -264,12 +291,9 @@ export function SyllabusGeneratorPage() {
           </div>
         </div>
 
-        <div className="mb-8 p-4 bg-violet-50 border border-violet-100 rounded-xl flex items-start gap-3">
-          <input type="checkbox" id="isGlobal" checked={isGlobal} onChange={(e) => setIsGlobal(e.target.checked)} className="mt-1 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 cursor-pointer" />
-          <div>
-            <label htmlFor="isGlobal" className="block text-sm font-bold text-violet-900 cursor-pointer">Share this syllabus with the community?</label>
-            <p className="text-xs text-violet-700 mt-1">If checked, this syllabus will be added to the Global Library.</p>
-          </div>
+        <div className="mb-8 p-4 bg-violet-50 border border-violet-100 rounded-xl">
+          <p className="text-sm font-bold text-violet-900">Private draft</p>
+          <p className="text-xs text-violet-700 mt-1">Generated curriculum is created privately for this child. An admin can later promote vetted content to the shared library.</p>
         </div>
 
         <button
