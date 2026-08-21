@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readString } from '@/lib/api-utils/http';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import {
@@ -62,9 +62,8 @@ export async function POST(req: NextRequest) {
   const targetGrade   = body?.targetGrade ? String(body.targetGrade) : null;
   const isGlobal      = body?.isGlobal === true;
 
-  const supabase = createServerSupabase(req);
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  const supabase = await createServerSupabase();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
     return new NextResponse('Unauthorized', { status: 401 });

@@ -6,7 +6,7 @@
 // ============================================================
 import { NextRequest, NextResponse } from 'next/server';
 import { sendError } from '@/lib/api-utils/http';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { LEARNING_STAGES } from '@/server/ai/tools/writeTools';
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'submission_id is required' }, { status: 400 });
     }
 
-    const supabase = createServerSupabase(req);
+    const supabase = await createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

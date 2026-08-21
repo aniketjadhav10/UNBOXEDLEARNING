@@ -1,14 +1,14 @@
 // app/api/tasks/complete/route.ts — migrated from server/tasks/complete.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sendError, readString } from '@/lib/api-utils/http';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { taskFromRow } from '@/src/lib/api-utils/tasks';
 
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const id = readString(body?.id, 'id');
-    const supabase = createServerSupabase(req);
+    const supabase = await createServerSupabase();
 
     const { data: task, error: taskError } = await supabase
       .from('tasks').select('id, topic_id, name, description, updated_at').eq('id', id).single();

@@ -1,7 +1,7 @@
 // app/api/ai/generate-tasks/route.ts — migrated from server/ai/generateTasks.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sendError, readString } from '@/lib/api-utils/http';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { findOrCreateTask, insertTaskProgress } from '@/server/ai/aiDb';
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const tasksCount  = Number(body?.tasks_count) || 10;
     const childId     = body?.child_id     ? String(body.child_id)     : null;
 
-    const supabase = createServerSupabase(req);
+    const supabase = await createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const ctx = { supabase, userId: user.id };

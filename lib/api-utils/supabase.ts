@@ -1,11 +1,15 @@
 // ============================================================
-// lib/api-utils/supabase.ts — Server Supabase for API routes
-// Reads Bearer token from Authorization header (same as before)
+// lib/api-utils/supabase.ts — Bearer-token Supabase client.
+// The app's own route handlers use the cookie-based client
+// (lib/supabase/server.ts), matching middleware and pages. This
+// Bearer client exists ONLY for the MCP endpoint (app/api/mcp),
+// whose external MCP clients authenticate via
+// `Authorization: Bearer <access-token>`, not cookies.
 // ============================================================
 import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 
-export function createServerSupabase(req: NextRequest) {
+export function createBearerSupabase(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -22,18 +26,5 @@ export function createServerSupabase(req: NextRequest) {
     auth: {
       persistSession: false,
     },
-  });
-}
-
-export function createServiceSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Supabase service role environment variables are not configured');
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
   });
 }

@@ -12,7 +12,7 @@
 import type { NextRequest } from 'next/server';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createBearerSupabase } from '@/lib/api-utils/supabase';
 import { tools, type ToolContext } from '@/server/ai/tools';
 import { logger } from '@/server/logger';
 
@@ -20,7 +20,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function authenticate(req: NextRequest): Promise<ToolContext | null> {
-  const supabase = createServerSupabase(req);
+  const supabase = createBearerSupabase(req);
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return null;
   return { supabase, userId: user.id };

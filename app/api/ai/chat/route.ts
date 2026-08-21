@@ -4,7 +4,7 @@
 // ============================================================
 import { NextRequest, NextResponse } from 'next/server';
 import { sendError } from '@/lib/api-utils/http';
-import { createServerSupabase } from '@/lib/api-utils/supabase';
+import { createServerSupabase } from '@/lib/supabase/server';
 import { MODEL_NAME, requireGeminiKey, getEmbedding, generateContentTracked } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { tools } from '@/server/ai/tools';
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   try {
     requireGeminiKey();
 
-    const supabase = createServerSupabase(req);
+    const supabase = await createServerSupabase();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
