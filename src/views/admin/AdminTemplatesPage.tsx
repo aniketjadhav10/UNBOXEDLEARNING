@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useData } from '../../context/DataContext';
-import { createItem } from '../../services/curriculumService';
+import { useAuth } from '../../context/AuthContext';
+import { createItem, fetchMyPrivateSubjects, promoteSubjectToLibrary } from '../../services/curriculumService';
 import { useToast } from '../../store/useToastStore';
 import { supabase } from '../../services/supabase';
-import { BookOpen, Sparkles, Plus, Loader2, LibraryBig } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Loader2, LibraryBig, ArrowUpCircle } from 'lucide-react';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
+import type { DbSubject } from '../../types/database';
 
 const SUBJECT_FIELDS: FormField[] = [
   { name: 'name', label: 'Template Name', type: 'text', placeholder: 'e.g. Basic Mathematics', required: true },
@@ -77,6 +79,29 @@ export function AdminTemplatesPage() {
     }
   }
 
+  const { isSuperAdmin } = useAuth();
+  const [privateSubjects, setPrivateSubjects] = useState<DbSubject[]>([]);
+  const [promoting, setPromoting] = useState<string | null>(null);
+
+  async function loadPrivate() {
+    try { setPrivateSubjects(await fetchMyPrivateSubjects()); } catch { /* ignore */ }
+  }
+  useEffect(() => { loadPrivate(); }, []);
+
+  async function handlePromote(id: string) {
+    setPromoting(id);
+    try {
+      await promoteSubjectToLibrary(id);
+      toast.success('Promoted to the shared library');
+      await loadPrivate();
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? 'Promote failed');
+    } finally {
+      setPromoting(null);
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto pb-24">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -129,6 +154,39 @@ export function AdminTemplatesPage() {
               />
             );
           })
+        )}
+      </div>
+
+      {/* Curation: private drafts awaiting promotion to the shared library */}
+      <div className="mt-10">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Private drafts</h2>
+        <p className="text-sm text-gray-400 mb-4">
+          Curriculum generated privately for your family.
+          {isSuperAdmin ? ' Promote vetted ones to the shared library.' : ' A super-admin can promote vetted ones to the shared library.'}
+        </p>
+        {privateSubjects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">
+            No private drafts.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {privateSubjects.map((s) => (
+              <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+                <h3 className="text-base font-bold text-gray-900 truncate">{s.name}</h3>
+                <p className="text-sm text-gray-500 line-clamp-2 mt-1 flex-1">{s.description || 'No description'}</p>
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => handlePromote(s.id)}
+                    disabled={promoting === s.id}
+                    className="mt-4 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors"
+                  >
+                    {promoting === s.id ? <Loader2 size={15} className="animate-spin" /> : <ArrowUpCircle size={15} />}
+                    Promote to library
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

@@ -63,6 +63,27 @@ export async function fetchAllSubjectsFromLibrary(): Promise<DbSubject[]> {
   return data as DbSubject[];
 }
 
+/** Fetch the current user's private (not-yet-shared) subjects — the curation queue. */
+export async function fetchMyPrivateSubjects(): Promise<DbSubject[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('subjects')
+    .select('*')
+    .eq('is_active', true)
+    .eq('is_global', false)
+    .eq('created_by', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as DbSubject[];
+}
+
+/** Promote a private subject into the shared global library (curation action). */
+export async function promoteSubjectToLibrary(id: string): Promise<void> {
+  const { error } = await supabase.from('subjects').update({ is_global: true }).eq('id', id);
+  if (error) throw error;
+}
+
 /** Fetch only subjects that a specific child is enrolled in */
 export async function fetchSubjects(childId?: string): Promise<DbSubject[]> {
   if (!childId) {
