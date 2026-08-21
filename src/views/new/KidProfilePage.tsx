@@ -31,7 +31,15 @@ const ACHIEVEMENT_LIST = [
 const KID_FIELDS: FormField[] = [
   { name: 'name', label: 'Child Name', type: 'text', required: true, placeholder: 'e.g. Leo' },
   { name: 'grade_level', label: 'Grade Level', type: 'text', required: true, placeholder: 'e.g. 4th Grade' },
-  { name: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'YYYY-MM-DD' }
+  { name: 'date_of_birth', label: 'Date of Birth', type: 'text', placeholder: 'YYYY-MM-DD' },
+  { name: 'interests', label: 'Interests', type: 'text', placeholder: 'e.g. dinosaurs, space, drawing (comma-separated)' },
+  { name: 'learning_style', label: 'Learning Style', type: 'select', options: [
+    { value: 'Visual', label: 'Visual' },
+    { value: 'Auditory', label: 'Auditory' },
+    { value: 'Hands-on', label: 'Hands-on' },
+    { value: 'Reading/Writing', label: 'Reading/Writing' },
+    { value: 'Mixed', label: 'Mixed' },
+  ] },
 ];
 
 export function KidProfilePage() {
@@ -53,7 +61,13 @@ export function KidProfilePage() {
     if (!kid) return;
     setSubmitting(true);
     try {
-      await updateItem('children', kid.id, data);
+      const payload = {
+        ...data,
+        interests: typeof data.interests === 'string'
+          ? data.interests.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : (data.interests ?? []),
+      };
+      await updateItem('children', kid.id, payload);
       await refresh();
       toast.success('Child profile updated!');
       setIsModalOpen(false);
@@ -231,7 +245,9 @@ export function KidProfilePage() {
         initialData={{
           name: kid.name,
           grade_level: kid.grade,
-          date_of_birth: kid.date_of_birth // Note: might need to be added to Kid in DataContext
+          date_of_birth: kid.date_of_birth,
+          interests: kid.interests?.join(', ') ?? '',
+          learning_style: kid.learningStyle ?? 'Mixed',
         }}
         onSubmit={handleUpdateKid}
         loading={submitting}
