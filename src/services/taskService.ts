@@ -3,6 +3,7 @@
 // ============================================================
 import { supabase } from './supabase';
 import { computeConsistencyScore } from '../utils/date';
+import { cachedQuery, delByPrefix } from './cacheService';
 import type { TablesUpdate } from '../types/database.types';
 import type {
   SupabaseTask,
@@ -89,6 +90,10 @@ function buildTaskWithProgress(
 
 // ── Fetch tasks for a child ───────────────────────────────
 export async function fetchTasksWithProgress(childId: string, status: 'active' | 'archived' | 'all' = 'active'): Promise<TaskWithProgress[]> {
+  return cachedQuery(`tasks:${childId}:${status}`, () => fetchTasksWithProgressUncached(childId, status));
+}
+
+async function fetchTasksWithProgressUncached(childId: string, status: 'active' | 'archived' | 'all' = 'active'): Promise<TaskWithProgress[]> {
   // 1. Fetch all progress for this child
   const { data: progressData, error: progErr } = await supabase
     .from('task_progress')
@@ -163,6 +168,7 @@ export async function updateTaskProgress(payload: UpdateProgressPayload): Promis
     .update({ ...updates, updated_at: new Date().toISOString() } as unknown as TablesUpdate<'task_progress'>)
     .eq('task_id', task_id);
   if (error) throw new Error(error.message);
+  await delByPrefix('tasks:');
 }
 
 // ── Mark practiced today ─────────────────────────────────────
@@ -184,6 +190,7 @@ export async function markPracticedToday(
     } as unknown as TablesUpdate<'task_progress'>)
     .eq('task_id', taskId);
   if (error) throw new Error(error.message);
+  await delByPrefix('tasks:');
 }
 
 // ── Archive task ─────────────────────────────────────────────
@@ -218,6 +225,7 @@ export async function assignTaskToChild(taskId: string, childId: string): Promis
       is_active: true,
       is_scheduled_this_week: false
     });
-    
+
   if (error) throw new Error(error.message);
+  await delByPrefix('tasks:');
 }

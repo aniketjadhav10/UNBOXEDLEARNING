@@ -98,3 +98,89 @@ export async function clearCache(): Promise<void> {
     console.warn('[CacheService] Failed to clear cache:', error);
   }
 }
+
+// ============================================================
+// Stale-while-revalidate query cache (built on the store above)
+// Entries are wrapped as { data, ts }. Read services call cachedQuery;
+// mutations call delCache / delByPrefix to invalidate.
+// ============================================================
+
+interface CacheEntry<T> { data: T; ts: number; }
+
+const DEFAULT_TTL = 60_000;
+
+/**
+ * Return cached data if fresh; if stale, return it immediately and revalidate in
+ * the background; if missing, fetch and cache. Cuts repeat DB hits within the TTL.
+ */
+export async function cachedQuery<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  opts?: { ttlMs?: number; forceRefresh?: boolean },
+): Promise<T> {
+  const ttlMs = opts?.ttlMs ?? DEFAULT_TTL;
+  const entry = opts?.forceRefresh ? null : await getCache<CacheEntry<T>>(key);
+  const now = Date.now();
+
+  if (entry && now - entry.ts < ttlMs) {
+    return entry.data; // fresh — no DB hit
+  }
+
+  if (entry) {
+    // stale — serve cached now, refresh cache in the background for next time
+    void revalidate(key, fetcher);
+    return entry.data;
+  }
+
+  // missing (or forced) — fetch and cache
+  const data = await fetcher();
+  await setCache<CacheEntry<T>>(key, { data, ts: Date.now() });
+  return data;
+}
+
+async function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<void> {
+  try {
+    const data = await fetcher();
+    await setCache<CacheEntry<T>>(key, { data, ts: Date.now() });
+  } catch (error) {
+    console.warn(`[CacheService] Background revalidate failed for ${key}:`, error);
+  }
+}
+
+/** Delete a single cache key. */
+export async function delCache(key: string): Promise<void> {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (error) {
+    console.warn(`[CacheService] Failed to delete cache for ${key}:`, error);
+  }
+}
+
+/** Delete every cache key that starts with `prefix` (coarse invalidation). */
+export async function delByPrefix(prefix: string): Promise<void> {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) cursor.delete();
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch (error) {
+    console.warn(`[CacheService] Failed to delete cache by prefix ${prefix}:`, error);
+  }
+}

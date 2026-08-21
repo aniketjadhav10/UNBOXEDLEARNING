@@ -3,6 +3,7 @@
 // current user) for the AI observability dashboard.
 // ============================================================
 import { supabase } from './supabase';
+import { cachedQuery } from './cacheService';
 import type { Tables } from '../types/database.types';
 
 export type AiUsageRow = Tables<'ai_usage'>;
@@ -16,13 +17,15 @@ export interface AiUsageSummary {
 }
 
 export async function fetchAiUsage(limit = 500): Promise<AiUsageRow[]> {
-  const { data, error } = await supabase
-    .from('ai_usage')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  return cachedQuery(`ai-usage:${limit}`, async () => {
+    const { data, error } = await supabase
+      .from('ai_usage')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
 }
 
 /** Aggregate raw usage rows into a per-operation breakdown. */
