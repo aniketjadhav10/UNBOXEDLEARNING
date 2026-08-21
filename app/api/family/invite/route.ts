@@ -1,13 +1,13 @@
 // app/api/family/invite/route.ts — migrated from server/family/invite.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sendError, readString } from '@/lib/api-utils/http';
+import { sendError, parseJson } from '@/lib/api-utils/http';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import nodemailer from 'nodemailer';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const email = readString(body?.email, 'email');
+    const { email } = await parseJson(req, z.object({ email: z.string().email() }));
     const supabase = await createServerSupabase();
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();

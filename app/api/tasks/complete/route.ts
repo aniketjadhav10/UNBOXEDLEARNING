@@ -1,13 +1,13 @@
 // app/api/tasks/complete/route.ts — migrated from server/tasks/complete.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sendError, readString } from '@/lib/api-utils/http';
+import { sendError, parseJson } from '@/lib/api-utils/http';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { taskFromRow } from '@/src/lib/api-utils/tasks';
 
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
-    const id = readString(body?.id, 'id');
+    const { id } = await parseJson(req, z.object({ id: z.string().uuid() }));
     const supabase = await createServerSupabase();
 
     const { data: task, error: taskError } = await supabase
@@ -18,6 +18,8 @@ export async function PATCH(req: NextRequest) {
       .from('topics').select('subject_id').eq('id', task.topic_id).single();
     if (topicError) throw topicError;
 
+    // FIXME: subjects no longer have a child_id (enrollment moved to child_subjects),
+    // so this derivation is broken — "complete task" needs childId passed by the caller.
     const { data: subject, error: subjectError } = await supabase
       .from('subjects').select('child_id').eq('id', topic.subject_id).single();
     if (subjectError) throw subjectError;

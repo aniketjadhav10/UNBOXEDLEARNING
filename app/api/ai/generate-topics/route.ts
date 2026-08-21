@@ -1,6 +1,7 @@
 // app/api/ai/generate-topics/route.ts — migrated from server/ai/generateTopics.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sendError, readString } from '@/lib/api-utils/http';
+import { sendError, parseJson } from '@/lib/api-utils/http';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
@@ -15,13 +16,20 @@ function tally(s: ActionSummary, a: MergeAction) { s[a]++; }
 export async function POST(req: NextRequest) {
   try {
     requireGeminiKey();
-    const body = await req.json();
-    const subjectName   = readString(body?.subject_name, 'subject_name');
-    const subjectId     = readString(body?.subject_id,   'subject_id');
-    const ageGroup      = body?.age_group       ? String(body.age_group)       : '3-5';
-    const topicsCount   = Number(body?.topics_count)    || 10;
-    const tasksPerTopic = Number(body?.tasks_per_topic) || 10;
-    const childId       = body?.child_id        ? String(body.child_id)        : null;
+    const body = await parseJson(req, z.object({
+      subject_name: z.string().min(1),
+      subject_id: z.string().uuid(),
+      age_group: z.string().optional(),
+      topics_count: z.number().int().positive().optional(),
+      tasks_per_topic: z.number().int().positive().optional(),
+      child_id: z.string().uuid().optional(),
+    }));
+    const subjectName   = body.subject_name;
+    const subjectId     = body.subject_id;
+    const ageGroup      = body.age_group ?? '3-5';
+    const topicsCount   = body.topics_count ?? 10;
+    const tasksPerTopic = body.tasks_per_topic ?? 10;
+    const childId       = body.child_id ?? null;
 
     const supabase = await createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -5,7 +5,8 @@
 // row, and advances the child's learning_stage on the task.
 // ============================================================
 import { NextRequest, NextResponse } from 'next/server';
-import { sendError } from '@/lib/api-utils/http';
+import { sendError, parseJson } from '@/lib/api-utils/http';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { generateJson, requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
@@ -39,11 +40,9 @@ export async function POST(req: NextRequest) {
   try {
     requireGeminiKey();
 
-    const body = await req.json();
-    const submissionId = body?.submission_id ? String(body.submission_id) : '';
-    if (!submissionId) {
-      return NextResponse.json({ error: 'submission_id is required' }, { status: 400 });
-    }
+    const { submission_id: submissionId } = await parseJson(req, z.object({
+      submission_id: z.string().uuid(),
+    }));
 
     const supabase = await createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -3,7 +3,8 @@
 // Migrated from server/ai/chat.ts (Vercel → Next.js Route Handler)
 // ============================================================
 import { NextRequest, NextResponse } from 'next/server';
-import { sendError } from '@/lib/api-utils/http';
+import { sendError, parseJson } from '@/lib/api-utils/http';
+import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { MODEL_NAME, requireGeminiKey, getEmbedding, generateContentTracked } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
@@ -26,12 +27,11 @@ export async function POST(req: NextRequest) {
     const ctx = { supabase, userId: user.id };
     await enforceRateLimit(ctx);
 
-    const body = await req.json();
-    const { messages = [], sessionId, curriculumContext = false } = body;
-
-    if (!messages.length) {
-      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
-    }
+    const { messages, sessionId, curriculumContext } = await parseJson(req, z.object({
+      messages: z.array(z.object({ role: z.string(), content: z.string() })).min(1),
+      sessionId: z.string().uuid().optional(),
+      curriculumContext: z.boolean().optional(),
+    }));
 
     const latestMessage = messages[messages.length - 1];
     if (latestMessage.role !== 'user') {
@@ -131,7 +131,8 @@ When a user asks to mark a task as completed, practicing, or any other stage, yo
 Respond nicely and concisely. You MUST format all your responses using Markdown.`;
 
     // 4. Format Messages
-    const formattedMessages = messages.map((m: any) => ({
+    // Gemini content is heterogeneous (text parts, functionResponse parts, model Part[]).
+    const formattedMessages: any[] = messages.map((m) => ({
       role: m.role,
       parts: [{ text: m.content }]
     }));
