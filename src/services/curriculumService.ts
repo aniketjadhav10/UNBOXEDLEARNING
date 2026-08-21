@@ -267,7 +267,7 @@ export async function enrollInSubject(childId: string, subjectId: string): Promi
       const taskProgressData = tasks.map(t => ({
         task_id: t.id,
         child_id: childId,
-        learning_stage: 'Not_Started',
+        learning_stage: 'Not_Started' as const,
         learned_count: 0,
         target_count: 5,
         repeat_interval: 1,
@@ -309,7 +309,7 @@ export async function enrollInTopic(
     const taskProgressData = tasks.map(t => ({
       task_id: t.id,
       child_id: childId,
-      learning_stage: 'Not_Started',
+      learning_stage: 'Not_Started' as const,
       learned_count: 0,
       target_count: 5,
       repeat_interval: 1,

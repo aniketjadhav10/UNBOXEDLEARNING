@@ -5,6 +5,7 @@
 // ============================================================
 import { supabase } from './supabase';
 import type { DbLessonPlan, DbScheduledSession, SessionStatus } from '../types/database';
+import type { TablesUpdate } from '../types/database.types';
 
 // ── Lesson plans ─────────────────────────────────────────────
 export async function fetchLessonPlans(childId: string): Promise<DbLessonPlan[]> {
@@ -74,7 +75,7 @@ export async function createSession(payload: {
 }
 
 export async function updateSessionStatus(id: string, status: SessionStatus): Promise<void> {
-  const patch: Record<string, unknown> = { status };
+  const patch: TablesUpdate<'scheduled_sessions'> = { status };
   if (status === 'completed') patch.completed_at = new Date().toISOString();
   const { error } = await supabase.from('scheduled_sessions').update(patch).eq('id', id);
   if (error) throw new Error(error.message);

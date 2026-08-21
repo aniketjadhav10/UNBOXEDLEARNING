@@ -23,7 +23,7 @@ export const memoryService = {
       console.error('Error fetching user memories:', error);
       throw error;
     }
-    return data || [];
+    return (data ?? []) as UserMemory[];
   },
 
   /** Delete a specific memory */

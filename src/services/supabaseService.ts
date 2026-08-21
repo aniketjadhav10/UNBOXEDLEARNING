@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
 
+// Generic table-agnostic CRUD helpers. Because the table name is dynamic, the
+// typed client can't resolve per-table column types here, so dynamic args are
+// asserted with `as never`. Callers supply the row type via the generic <T>.
 export type TableName = 'subjects' | 'topics' | 'tasks' | 'activities' | 'ai_inbox' | 'children';
 
 export async function getAll<T>(table: TableName) {
@@ -8,7 +11,7 @@ export async function getAll<T>(table: TableName) {
   const hasActiveAndOrder = ['subjects', 'topics', 'tasks', 'activities'].includes(table);
 
   if (hasActiveAndOrder) {
-    query = query.eq('is_active', true);
+    query = query.eq('is_active' as never, true as never);
     const { data, error } = await query.order('order_index', { ascending: true, nullsFirst: false });
     if (error) throw error;
     return (data ?? []) as T[];
@@ -22,19 +25,19 @@ export async function getAll<T>(table: TableName) {
 
 export async function insert<T>(table: TableName, data: Record<string, unknown>) {
   const payload = await withUserId(table, data);
-  const { data: created, error } = await supabase.from(table).insert(payload).select('*').single();
+  const { data: created, error } = await supabase.from(table).insert(payload as never).select('*').single();
   if (error) throw error;
   return created as T;
 }
 
 export async function update<T>(table: TableName, id: string, data: Record<string, unknown>) {
-  const { data: updated, error } = await supabase.from(table).update(data).eq('id', id).select('*').single();
+  const { data: updated, error } = await supabase.from(table).update(data as never).eq('id', id).select('*').single();
   if (error) throw error;
   return updated as T;
 }
 
 export async function softDelete(table: TableName, id: string) {
-  const { error } = await supabase.from(table).update({ is_active: false }).eq('id', id);
+  const { error } = await supabase.from(table).update({ is_active: false } as never).eq('id', id);
   if (error) throw error;
 }
 

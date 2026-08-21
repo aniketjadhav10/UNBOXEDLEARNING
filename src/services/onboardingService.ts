@@ -216,13 +216,15 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 
   let hasSubjects = false;
   if (hasChild && childrenRes.data?.[0]) {
-    const { data: subjects } = await supabase
-      .from('subjects')
+    // Subjects link to children via the child_subjects junction — there is no
+    // child_id column on subjects. Check enrollment instead.
+    const { data: enrolled } = await supabase
+      .from('child_subjects')
       .select('id')
       .eq('child_id', childrenRes.data[0].id)
       .eq('is_active', true)
       .limit(1);
-    hasSubjects = (subjects?.length ?? 0) > 0;
+    hasSubjects = (enrolled?.length ?? 0) > 0;
   }
 
   return { hasFamily, hasChild, hasSubjects };

@@ -214,8 +214,7 @@ export interface DbActivity {
   task_id: string;
   name: string;
   type: string | null;
-  materials: string | null;
-  duration_minutes: number | null;
+  materials: string[] | null;
   order_index: number;
   is_active: boolean;
   // New fields (Phase 1)

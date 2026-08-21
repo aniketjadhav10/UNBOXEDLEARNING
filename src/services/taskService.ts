@@ -3,6 +3,7 @@
 // ============================================================
 import { supabase } from './supabase';
 import { computeConsistencyScore } from '../utils/date';
+import type { TablesUpdate } from '../types/database.types';
 import type {
   SupabaseTask,
   SupabaseTaskProgress,
@@ -113,11 +114,14 @@ export async function fetchTasksWithProgress(childId: string, status: 'active' |
 
   if (taskErr) throw new Error(taskErr.message);
 
+  // DB rows are looser than the app view-models (source_type/resources are text/json;
+  // interest_level is text — see the interest_level→smallint migration TODO), so bridge
+  // at this read boundary rather than casting each field.
   const progressMap = new Map<string, SupabaseTaskProgress>(
-    progressData.map((p) => [p.task_id, p])
+    progressData.map((p) => [p.task_id, p as unknown as SupabaseTaskProgress])
   );
 
-  return (tasks ?? []).map((t) => buildTaskWithProgress(t, progressMap));
+  return (tasks ?? []).map((t) => buildTaskWithProgress(t as unknown as SupabaseTask, progressMap));
 }
 
 // ── Fetch dashboard summary ───────────────────────────────────
@@ -154,7 +158,9 @@ export async function updateTaskProgress(payload: UpdateProgressPayload): Promis
   const { task_id, ...updates } = payload;
   const { error } = await supabase
     .from('task_progress')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    // interest_level is stored as text in the DB but the app types it as a number;
+    // bridge here until the interest_level→smallint migration lands.
+    .update({ ...updates, updated_at: new Date().toISOString() } as unknown as TablesUpdate<'task_progress'>)
     .eq('task_id', task_id);
   if (error) throw new Error(error.message);
 }
@@ -175,7 +181,7 @@ export async function markPracticedToday(
       last_practiced_at: now,
       updated_at: now,
       ...updates,
-    })
+    } as unknown as TablesUpdate<'task_progress'>)
     .eq('task_id', taskId);
   if (error) throw new Error(error.message);
 }

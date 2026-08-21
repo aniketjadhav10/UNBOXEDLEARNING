@@ -31,7 +31,7 @@ export function AppearanceManager() {
          const { data, error } = await supabase
            .from('profiles')
            .select('preferences')
-           .eq('id', user?.id)
+           .eq('id', user?.id ?? '')
            .single();
            
          if (error) throw error;
