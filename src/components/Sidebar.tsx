@@ -70,6 +70,7 @@ const ADMIN_NAV: NavItem[] = [
       { label: 'Global Templates', path: '/admin/templates', icon: LibraryBig },
       { label: 'AI Syllabus', path: '/syllabus-generator', icon: Sparkles },
       { label: 'System Logs', path: '/system/emails', icon: Mail },
+      { label: 'AI Usage', path: '/system/ai-usage', icon: BrainCircuit },
       { label: 'Settings', path: '/settings', icon: Settings },
     ]
   }
