@@ -741,6 +741,7 @@ export type Database = {
       subjects: {
         Row: {
           color: string
+          development_domain: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -758,6 +759,7 @@ export type Database = {
         }
         Insert: {
           color?: string
+          development_domain?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -775,6 +777,7 @@ export type Database = {
         }
         Update: {
           color?: string
+          development_domain?: string
           created_at?: string
           created_by?: string | null
           description?: string | null

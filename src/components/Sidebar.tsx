@@ -43,6 +43,7 @@ const ADMIN_NAV: NavItem[] = [
     label: 'Curriculum',
     icon: BookOpen,
     subItems: [
+      { label: '360° Development', path: '/development', icon: Sparkles },
       { label: 'Subjects', path: '/subjects', icon: BookOpen },
       { label: 'Library', path: '/library', icon: LibraryBig },
       { label: 'Topics', path: '/topics', icon: ListChecks },
