@@ -3,27 +3,36 @@ You are an expert homeschool Subject Matter Expert.
 You have been provided with a list of topics for a [Age]-year-old learner at a [SkillLevel] skill level.
 [InterestsInstruction]
 
-Your task is to generate exactly [TasksCount] highly detailed, practical learning tasks for EACH topic provided.
+Your task: break EACH topic into a short skill tree, then attach practical tasks to each skill.
 
 Topic Outlines (for context):
 """
 [TopicsJson]
 """
 
+Skill Requirements (2–4 skills per topic, ordered easiest → hardest):
+- name: 2–6 words naming a concrete learnable skill (e.g. "Count objects 1–10")
+- description: What mastering this skill means
+- level: integer 1–5 (relative difficulty within the whole subject; foundational skills = 1)
+- difficulty: Beginner | Intermediate | Advanced
+- age_min, age_max: suggested age range (integers)
+- mastery_criteria: one sentence — how you know the child has mastered it
+- prerequisites: array of skill NAMES (from THIS response or earlier topics) that must come first;
+  use [] for foundational skills. Never list a skill as its own prerequisite; keep it acyclic.
+- learning_objectives: array of 2–4 specific "can do" statements
+- tasks: 1–2 tasks that build this skill (distribute roughly [TasksCount] tasks across the topic's skills)
+
 Task Requirements:
-- Represent one clear learning objective
-- Progress from simpler to more challenging
-- Practical for a homeschool setting
 - title: 3–8 words
 - description: Concise, actionable instruction
-- task_type: e.g., lesson, activity, quiz, project, experiment
+- task_type: lesson | activity | quiz | project | experiment
 - instructions: Detailed step-by-step
 - parent_guide: Friendly, encouraging instructions strictly for the parent
 - materials_needed: Array of items
 - estimated_minutes: Number of minutes
 - learning_objective: Specific goal
 - assessment_criteria: How to know child succeeded
-- activities: Array of 2-4 bite-sized sub-steps
+- activities: Array of 2–4 bite-sized sub-steps
 
 Each activity must include:
 - name: Catchy name
@@ -31,28 +40,36 @@ Each activity must include:
 - instructions: Detailed text/URLs
 - materials: Specific items needed
 
-Return ONLY valid JSON matching this exact structure (return the array of topics with tasks added):
+Return ONLY valid JSON matching this exact structure:
 {
   "topics": [
     {
       "title": "Exact Title of Topic 1 from input",
-      "tasks": [
+      "skills": [
         {
-          "title": "Task 1",
+          "name": "Skill 1",
           "description": "...",
-          "task_type": "activity",
-          "instructions": "...",
-          "parent_guide": "...",
-          "materials_needed": ["Item 1"],
-          "estimated_minutes": 30,
-          "learning_objective": "...",
-          "assessment_criteria": "...",
-          "activities": [
+          "level": 1,
+          "difficulty": "Beginner",
+          "age_min": 6,
+          "age_max": 8,
+          "mastery_criteria": "Child can ... independently",
+          "prerequisites": [],
+          "learning_objectives": ["Can ...", "Can ..."],
+          "tasks": [
             {
-              "name": "Act 1",
-              "activity_type": "hands-on",
+              "title": "Task 1",
+              "description": "...",
+              "task_type": "activity",
               "instructions": "...",
-              "materials": []
+              "parent_guide": "...",
+              "materials_needed": ["Item 1"],
+              "estimated_minutes": 30,
+              "learning_objective": "...",
+              "assessment_criteria": "...",
+              "activities": [
+                { "name": "Act 1", "activity_type": "hands-on", "instructions": "...", "materials": [] }
+              ]
             }
           ]
         }
