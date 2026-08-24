@@ -10,11 +10,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000'],
-    },
-  },
   transpilePackages: ['lucide-react'],
   images: {
     remotePatterns: [

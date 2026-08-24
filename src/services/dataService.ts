@@ -221,7 +221,7 @@ export async function fetchTasks(topicId?: string): Promise<DbTask[]> {
   if (topicId) query = query.eq('topic_id', topicId);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as DbTask[];
+  return (data ?? []) as unknown as DbTask[];
 }
 
 // ── Task Progress ─────────────────────────────────────────────
@@ -281,7 +281,7 @@ export async function fetchAllAppData() {
       .select('*')
       .in('topic_id', topicIds)
       .eq('is_active', true);
-    if (data) tasks.push(...(data as DbTask[]));
+    if (data) tasks.push(...(data as unknown as DbTask[]));
   }
 
   const taskProgress = await fetchTaskProgress();

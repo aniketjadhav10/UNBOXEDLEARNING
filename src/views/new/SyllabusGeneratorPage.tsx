@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { Camera, FileText, Upload, Sparkles, CheckCircle2, Loader2, BrainCircuit, ListTree } from 'lucide-react';
+import { Camera, FileText, Upload, Sparkles, Loader2, BrainCircuit, ListTree, Globe } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '../../store/useToastStore';
 import { useData } from '../../context/DataContext';
 import { supabase } from '../../services/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SyllabusReviewPanel } from '../../components/curriculum/SyllabusReviewPanel';
+import { clearCache } from '../../services/cacheService';
 
-type InputType = 'text' | 'file' | 'camera';
-type GenerationStatus = 'idle' | 'planning' | 'chunking' | 'writing' | 'complete' | 'error';
+type InputType = 'text' | 'file' | 'camera' | 'url';
+type GenerationStatus = 'idle' | 'planning' | 'chunking' | 'writing' | 'linking' | 'complete' | 'error';
 
 export function SyllabusGeneratorPage() {
   const [inputType, setInputType] = useState<InputType>('text');
   const [textInput, setTextInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [age, setAge] = useState<number>(10);
   const [skillLevel, setSkillLevel] = useState<string>('Beginner');
@@ -24,21 +27,53 @@ export function SyllabusGeneratorPage() {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle');
   const [generationMessage, setGenerationMessage] = useState('');
 
+  // Review-before-save
+  const [reviewMode, setReviewMode] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [draft, setDraft] = useState<any | null>(null);
+  const [commitMeta, setCommitMeta] = useState<{ childId?: string; isGlobal: boolean }>({ isGlobal });
+  const [committing, setCommitting] = useState(false);
+
   const router = useRouter();
   const toast = useToast();
   const { kids } = useData();
 
+  // Multimodal source extraction (PDF/photo → Gemini, URL → fetch+strip).
+  const extractSource = async (payload: { file?: File; url?: string }): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const headers: any = { 'Authorization': session ? `Bearer ${session.access_token}` : '' };
+    let res: Response;
+    if (payload.file) {
+      const fd = new FormData();
+      fd.append('file', payload.file);
+      res = await fetch('/api/ai/extract-source', { method: 'POST', headers, body: fd });
+    } else {
+      headers['Content-Type'] = 'application/json';
+      res = await fetch('/api/ai/extract-source', { method: 'POST', headers, body: JSON.stringify({ url: payload.url }) });
+    }
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'Failed to read source material');
+    return json.sourceText as string;
+  };
+
   const handleGenerate = async () => {
+    setDraft(null);
     setGenerationStatus('planning');
     setGenerationMessage('Initializing AI agents...');
 
     try {
       let sourceText = textInput;
 
+      // Multimodal ingestion: turn a PDF/photo/URL into source text first.
       if (inputType === 'file' || inputType === 'camera') {
-        toast.info('File/Camera parsing not fully implemented yet. Please use text for now.');
-        setGenerationStatus('idle');
-        return;
+        if (!file) { toast.error('Please choose a file first.'); setGenerationStatus('idle'); return; }
+        setGenerationMessage('Reading your document with AI…');
+        sourceText = await extractSource({ file });
+      } else if (inputType === 'url') {
+        if (!urlInput) { toast.error('Enter a URL first.'); setGenerationStatus('idle'); return; }
+        setGenerationMessage('Fetching and reading the page…');
+        sourceText = await extractSource({ url: urlInput });
       }
 
       const activeChildId = selectedChildId || kids[0]?.id;
@@ -56,6 +91,7 @@ export function SyllabusGeneratorPage() {
           sourceText, age, skillLevel,
           targetGrade: targetGrade === 'None' ? null : targetGrade,
           isGlobal, topicsCount, tasksPerTopic,
+          preview: reviewMode,
           childId: activeChildId || undefined,
           interests: selectedKid?.interests ?? [],
         }),
@@ -83,19 +119,24 @@ export function SyllabusGeneratorPage() {
             if (eventStr.startsWith('data: ')) {
               try {
                 const data = JSON.parse(eventStr.replace('data: ', ''));
-                setGenerationStatus(data.status);
                 setGenerationMessage(data.message || '');
 
-                if (data.status === 'complete') {
+                if (data.status === 'draft') {
+                  // Review-before-save: show the editable tree, persist nothing yet.
+                  setDraft(data.draft);
+                  setCommitMeta({ childId: activeChildId || undefined, isGlobal });
+                  setGenerationStatus('idle');
+                  return;
+                } else if (data.status === 'complete') {
+                  setGenerationStatus('complete');
+                  await clearCache();
                   toast.success('Syllabus generated successfully!');
-                  if (data.subjectId) {
-                    router.push(`/subjects/${data.subjectId}/topics`);
-                  } else {
-                    router.push('/subjects');
-                  }
+                  router.push(data.subjectId ? `/subjects/${data.subjectId}/topics` : '/subjects');
                   return;
                 } else if (data.status === 'error') {
                   throw new Error(data.message);
+                } else {
+                  setGenerationStatus(data.status);
                 }
               } catch (e) {
                 console.error("Error parsing stream chunk", e);
@@ -109,6 +150,32 @@ export function SyllabusGeneratorPage() {
       console.error('Error generating syllabus:', error);
       toast.error(error.message || 'An error occurred while generating the syllabus.');
       setGenerationStatus('error');
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCommit = async (edited: any) => {
+    try {
+      setCommitting(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/ai/commit-syllabus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': session ? `Bearer ${session.access_token}` : '',
+        },
+        body: JSON.stringify({ draft: edited, childId: commitMeta.childId, isGlobal: commitMeta.isGlobal }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to save curriculum');
+      await clearCache();
+      toast.success('Curriculum saved!');
+      setDraft(null);
+      router.push(json.subjectId ? `/subjects/${json.subjectId}/topics` : '/subjects');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save curriculum');
+    } finally {
+      setCommitting(false);
     }
   };
 
@@ -134,6 +201,15 @@ export function SyllabusGeneratorPage() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 relative overflow-hidden">
 
+        {draft ? (
+          <SyllabusReviewPanel
+            draft={draft}
+            saving={committing}
+            onSave={handleCommit}
+            onDiscard={() => setDraft(null)}
+          />
+        ) : (
+        <>
         {/* Progress Overlay */}
         <AnimatePresence>
           {isGenerating && (
@@ -198,6 +274,15 @@ export function SyllabusGeneratorPage() {
             >
               <Camera className="w-5 h-5" /> Camera Photo
             </button>
+            <button
+              onClick={() => setInputType('url')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 font-medium transition-all ${inputType === 'url'
+                  ? 'border-violet-600 bg-violet-50 text-violet-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-violet-300'
+                }`}
+            >
+              <Globe className="w-5 h-5" /> Website URL
+            </button>
           </div>
         </div>
 
@@ -225,9 +310,23 @@ export function SyllabusGeneratorPage() {
             </motion.div>
           )}
           {inputType === 'camera' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 transition-colors relative cursor-pointer">
+              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
               <Camera className="w-8 h-8 text-gray-400 mb-2" />
-              <p className="text-sm font-medium text-gray-600">Camera placeholder</p>
+              <p className="text-sm font-medium text-gray-600">{file ? file.name : 'Tap to photograph the material'}</p>
+            </motion.div>
+          )}
+          {inputType === 'url' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Curriculum / article URL</label>
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://example.com/curriculum"
+                className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-2">We&apos;ll fetch the page and extract its readable text.</p>
             </motion.div>
           )}
         </div>
@@ -296,9 +395,20 @@ export function SyllabusGeneratorPage() {
           <p className="text-xs text-violet-700 mt-1">Generated curriculum is created privately for this child. An admin can later promote vetted content to the shared library.</p>
         </div>
 
+        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={reviewMode}
+            onChange={(e) => setReviewMode(e.target.checked)}
+            className="w-4 h-4 accent-violet-600"
+          />
+          <span className="text-sm font-medium text-gray-700">Review before saving</span>
+          <span className="text-xs text-gray-400">— preview &amp; edit the skill tree, then save</span>
+        </label>
+
         <button
           onClick={handleGenerate}
-          disabled={isGenerating || (inputType === 'text' && !textInput) || (inputType === 'file' && !file)}
+          disabled={isGenerating || (inputType === 'text' && !textInput) || ((inputType === 'file' || inputType === 'camera') && !file) || (inputType === 'url' && !urlInput)}
           className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex justify-center items-center gap-2"
         >
           {isGenerating ? (
@@ -306,10 +416,12 @@ export function SyllabusGeneratorPage() {
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              Generate Syllabus
+              {reviewMode ? 'Generate & Review' : 'Generate Syllabus'}
             </>
           )}
         </button>
+        </>
+        )}
 
       </div>
     </div>

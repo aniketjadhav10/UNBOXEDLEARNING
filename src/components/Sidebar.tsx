@@ -22,6 +22,8 @@ import {
   Sparkles,
   LibraryBig,
   ShieldCheck,
+  Route,
+  Globe,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -44,6 +46,7 @@ const ADMIN_NAV: NavItem[] = [
     icon: BookOpen,
     subItems: [
       { label: '360° Development', path: '/development', icon: Sparkles },
+      { label: 'Learning Roadmap', path: '/roadmap', icon: Route },
       { label: 'Subjects', path: '/subjects', icon: BookOpen },
       { label: 'Library', path: '/library', icon: LibraryBig },
       { label: 'Topics', path: '/topics', icon: ListChecks },
@@ -69,6 +72,7 @@ const ADMIN_NAV: NavItem[] = [
       { label: 'Family', path: '/family', icon: Heart },
       { label: 'Kids', path: '/kids', icon: Users },
       { label: 'Global Templates', path: '/admin/templates', icon: LibraryBig },
+      { label: 'Build 3–6 Library', path: '/admin/library-builder', icon: Globe },
       { label: 'AI Syllabus', path: '/syllabus-generator', icon: Sparkles },
       { label: 'System Logs', path: '/system/emails', icon: Mail },
       { label: 'AI Usage', path: '/system/ai-usage', icon: BrainCircuit },

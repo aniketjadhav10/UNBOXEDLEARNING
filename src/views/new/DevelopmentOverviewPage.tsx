@@ -7,10 +7,20 @@ import { Compass, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { DEVELOPMENT_DOMAINS } from '../../types/domains';
 import { fetchDomainSubjects, type DomainSubject } from '../../services/domainService';
+import { fetchDomainMastery, type DomainMastery } from '../../services/roadmapService';
+import { SkillGapRadar } from '../../components/analytics/SkillGapRadar';
+import { useData } from '../../context/DataContext';
+import { useSettingsStore } from '../../store/useSettingsStore';
 
 export function DevelopmentOverviewPage() {
   useDocumentTitle('360° Development');
+  const { kids } = useData();
+  const { selectedChildId } = useSettingsStore();
+  const childId = selectedChildId || kids[0]?.id || '';
+  const child = kids.find((k) => k.id === childId);
+
   const [subjects, setSubjects] = useState<DomainSubject[]>([]);
+  const [mastery, setMastery] = useState<DomainMastery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +28,12 @@ export function DevelopmentOverviewPage() {
     setLoading(true);
     setError(null);
     try {
-      setSubjects(await fetchDomainSubjects());
+      const [subs, dm] = await Promise.all([
+        fetchDomainSubjects(),
+        childId ? fetchDomainMastery(childId) : Promise.resolve([]),
+      ]);
+      setSubjects(subs);
+      setMastery(dm);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -28,7 +43,8 @@ export function DevelopmentOverviewPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
 
   const byDomain = useMemo(() => {
     const m: Record<string, DomainSubject[]> = {};
@@ -70,6 +86,13 @@ export function DevelopmentOverviewPage() {
           <RefreshCw size={15} />
         </button>
       </div>
+
+      {childId && (
+        <div>
+          {child && <p className="text-xs font-semibold text-gray-400 mb-2">{child.name}&apos;s mastery</p>}
+          <SkillGapRadar mastery={mastery} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {DEVELOPMENT_DOMAINS.map((d) => {

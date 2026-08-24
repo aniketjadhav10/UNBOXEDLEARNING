@@ -212,7 +212,7 @@ export async function fetchTasksByTopic(topicId: string): Promise<DbTask[]> {
       .eq('is_active', true)
       .order('order_index', { ascending: true });
     if (error) throw error;
-    return data as DbTask[];
+    return data as unknown as DbTask[];
   });
 }
 
