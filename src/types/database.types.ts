@@ -668,6 +668,7 @@ export type Database = {
           notes: string | null
           plan_id: string | null
           scheduled_date: string
+          skill_id: string | null
           start_time: string | null
           status: string
           task_id: string | null
@@ -684,6 +685,7 @@ export type Database = {
           notes?: string | null
           plan_id?: string | null
           scheduled_date: string
+          skill_id?: string | null
           start_time?: string | null
           status?: string
           task_id?: string | null
@@ -700,6 +702,7 @@ export type Database = {
           notes?: string | null
           plan_id?: string | null
           scheduled_date?: string
+          skill_id?: string | null
           start_time?: string | null
           status?: string
           task_id?: string | null
@@ -707,6 +710,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scheduled_sessions_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scheduled_sessions_child_id_fkey"
             columns: ["child_id"]
@@ -939,6 +949,221 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_objectives: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          order_index: number
+          skill_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          order_index?: number
+          skill_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          order_index?: number
+          skill_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_objectives_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_prerequisites: {
+        Row: {
+          created_at: string
+          prerequisite_skill_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          prerequisite_skill_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          prerequisite_skill_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_prerequisites_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_prerequisites_prerequisite_skill_id_fkey"
+            columns: ["prerequisite_skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_progress: {
+        Row: {
+          child_id: string
+          confidence: number
+          created_at: string
+          id: string
+          is_active: boolean
+          last_practiced_at: string | null
+          next_review_at: string | null
+          practice_count: number
+          review_interval_days: number
+          skill_id: string
+          status: Database["public"]["Enums"]["learning_stage"]
+          success_count: number
+          success_rate: number
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_practiced_at?: string | null
+          next_review_at?: string | null
+          practice_count?: number
+          review_interval_days?: number
+          skill_id: string
+          status?: Database["public"]["Enums"]["learning_stage"]
+          success_count?: number
+          success_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_practiced_at?: string | null
+          next_review_at?: string | null
+          practice_count?: number
+          review_interval_days?: number
+          skill_id?: string
+          status?: Database["public"]["Enums"]["learning_stage"]
+          success_count?: number
+          success_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_progress_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skills: {
+        Row: {
+          age_max: number | null
+          age_min: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          development_domain: string
+          difficulty: string | null
+          embedding: string | null
+          id: string
+          is_active: boolean
+          is_global: boolean
+          level: number
+          mastery_criteria: string | null
+          name: string
+          sequence: number
+          subject_id: string
+          topic_id: string
+          updated_at: string
+        }
+        Insert: {
+          age_max?: number | null
+          age_min?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          development_domain?: string
+          difficulty?: string | null
+          embedding?: string | null
+          id?: string
+          is_active?: boolean
+          is_global?: boolean
+          level?: number
+          mastery_criteria?: string | null
+          name: string
+          sequence?: number
+          subject_id: string
+          topic_id: string
+          updated_at?: string
+        }
+        Update: {
+          age_max?: number | null
+          age_min?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          development_domain?: string
+          difficulty?: string | null
+          embedding?: string | null
+          id?: string
+          is_active?: boolean
+          is_global?: boolean
+          level?: number
+          mastery_criteria?: string | null
+          name?: string
+          sequence?: number
+          subject_id?: string
+          topic_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skills_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_progress: {
         Row: {
           child_id: string
@@ -1042,6 +1267,7 @@ export type Database = {
           order_index: number
           parent_guide: string | null
           resources: Json | null
+          skill_id: string | null
           source_type: string
           task_type: string | null
           topic_id: string
@@ -1065,6 +1291,7 @@ export type Database = {
           order_index?: number
           parent_guide?: string | null
           resources?: Json | null
+          skill_id?: string | null
           source_type?: string
           task_type?: string | null
           topic_id: string
@@ -1088,12 +1315,20 @@ export type Database = {
           order_index?: number
           parent_guide?: string | null
           resources?: Json | null
+          skill_id?: string | null
           source_type?: string
           task_type?: string | null
           topic_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_topic_id_fkey"
             columns: ["topic_id"]
@@ -1276,6 +1511,48 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_domain_mastery: {
+        Args: { p_child_id: string }
+        Returns: {
+          development_domain: string
+          total_skills: number
+          mastered_skills: number
+          in_progress_skills: number
+          mastery_pct: number
+        }[]
+      }
+      get_skill_roadmap: {
+        Args: { p_child_id: string; p_subject_id: string }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          level: number
+          sequence: number
+          topic_id: string
+          development_domain: string
+          status: Database["public"]["Enums"]["learning_stage"]
+          bucket: string
+          prerequisite_ids: string[]
+          practice_count: number
+          last_practiced_at: string | null
+          started_at: string | null
+        }[]
+      }
+      match_skills: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+          topic_id_filter?: string
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          similarity: number
+        }[]
+      }
       match_subjects: {
         Args: {
           match_count: number
@@ -1287,6 +1564,24 @@ export type Database = {
           id: string
           name: string
           similarity: number
+        }[]
+      }
+      recommend_next_skills: {
+        Args: {
+          p_child_id: string
+          p_subject_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          level: number
+          sequence: number
+          subject_id: string
+          topic_id: string
+          development_domain: string
+          reason: string
         }[]
       }
       match_tasks: {
