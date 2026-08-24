@@ -182,6 +182,7 @@ export function EmailLogsPage() {
   const [cronSavedMsg, setCronSavedMsg] = useState('');
 
   const [activeModal, setActiveModal] = useState<EmailTemplate | null>(null);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastCounter = useRef(0);
 
@@ -225,6 +226,20 @@ export function EmailLogsPage() {
       addToast(`Failed to save: ${err.message}`, 'error');
     } finally {
       setIsSavingCron(false);
+    }
+  }
+
+  async function handleGeneratePlan() {
+    setGeneratingPlan(true);
+    try {
+      const res = await fetch('/api/planner/generate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate plan.');
+      addToast(data.message || 'Weekly plan created!', 'success');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to generate weekly plan.', 'error');
+    } finally {
+      setGeneratingPlan(false);
     }
   }
 
@@ -336,6 +351,32 @@ export function EmailLogsPage() {
             <p className="text-2xl font-bold text-gray-900 mt-0.5">{logs.length}</p>
             <p className="text-xs text-gray-400 mt-0.5">In database history</p>
           </div>
+        </div>
+      </div>
+
+      {/* ── Roadmap Planner ── */}
+      <div>
+        <h2 className="text-base font-bold text-gray-900 mb-3">Roadmap Planner</h2>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md flex-shrink-0">
+              <CalendarClock size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-800">Generate Weekly Plan</p>
+              <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                Rebuild this week&apos;s plan for every child from the roadmap — due 🔁 reviews + 🌱 recommended-next skills. No email; view it under Weekly Planner.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleGeneratePlan}
+            disabled={generatingPlan}
+            className="flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 transition-opacity disabled:opacity-60 shadow-md"
+          >
+            {generatingPlan ? <Loader2 size={15} className="animate-spin" /> : <CalendarClock size={15} />}
+            {generatingPlan ? 'Generating…' : 'Generate now'}
+          </button>
         </div>
       </div>
 

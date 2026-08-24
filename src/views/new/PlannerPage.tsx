@@ -8,8 +8,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import { fetchSessions, updateSessionStatus } from '../../services/scheduleService';
-import type { DbScheduledSession, SessionStatus } from '../../types/database';
+import { fetchSessions, updateSessionStatus, type ScheduledSessionView } from '../../services/scheduleService';
+import type { SessionStatus } from '../../types/database';
 
 function mondayOf(d: Date): Date {
   const date = new Date(d);
@@ -30,21 +30,16 @@ const STATUS_STYLE: Record<SessionStatus, string> = {
 
 export function PlannerPage() {
   useDocumentTitle('Weekly Planner');
-  const { kids, rawTasks } = useData();
+  const { kids } = useData();
   const { selectedChildId } = useSettingsStore();
   const childId = selectedChildId || kids?.[0]?.id || '';
 
-  const [sessions, setSessions] = useState<DbScheduledSession[]>([]);
+  const [sessions, setSessions] = useState<ScheduledSessionView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const weekStart = useMemo(() => mondayOf(new Date()), []);
   const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  const taskName = useMemo(() => {
-    const m: Record<string, string> = {};
-    rawTasks.forEach((t) => { m[t.id] = t.name; });
-    return m;
-  }, [rawTasks]);
 
   const load = useCallback(async () => {
     if (!childId) { setLoading(false); return; }
@@ -67,7 +62,7 @@ export function PlannerPage() {
   }
 
   const byDate = useMemo(() => {
-    const m: Record<string, DbScheduledSession[]> = {};
+    const m: Record<string, ScheduledSessionView[]> = {};
     sessions.forEach((s) => { (m[s.scheduled_date] ??= []).push(s); });
     return m;
   }, [sessions]);
@@ -117,11 +112,19 @@ export function PlannerPage() {
                 <div key={s.id} className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold truncate ${s.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {s.task_id ? (taskName[s.task_id] ?? 'Task') : 'Session'}
+                      {s.label}
                     </p>
-                    <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[s.status]}`}>
-                      {s.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {s.kind === 'skill' && s.notes === 'review' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">🔁 Review</span>
+                      )}
+                      {s.kind === 'skill' && s.notes === 'new' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-lime-100 text-lime-700">🌱 New skill</span>
+                      )}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[s.status]}`}>
+                        {s.status.replace('_', ' ')}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {s.status !== 'completed' && (
