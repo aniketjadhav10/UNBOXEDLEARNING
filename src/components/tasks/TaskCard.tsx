@@ -86,7 +86,7 @@ export function TaskCard({
   const hasDetails = task.materials_needed?.length || task.parent_guide || task.learning_objective;
 
   return (
-    <article className={`group rounded-3xl border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${bgStyle} overflow-hidden flex flex-col relative`}>
+    <article className={`group self-start rounded-3xl border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${bgStyle} overflow-hidden flex flex-col relative`}>
       
       {/* ── TOP SECTION ─────────────────────────────────────── */}
       <div className="p-3.5 pb-2 flex gap-3">
