@@ -89,14 +89,14 @@ export function TaskCard({
     <article className={`group rounded-3xl border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${bgStyle} overflow-hidden flex flex-col relative`}>
       
       {/* ── TOP SECTION ─────────────────────────────────────── */}
-      <div className="p-5 pb-3 flex gap-4">
+      <div className="p-3.5 pb-2 flex gap-3">
         {/* Progress ring */}
-        <div className="flex-shrink-0 mt-1">
-          <TaskProgressRing percent={task.progressPercent} size={48} />
+        <div className="flex-shrink-0">
+          <TaskProgressRing percent={task.progressPercent} size={38} />
         </div>
 
         {/* Details Column */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
           {/* Row 1: Title & Badges */}
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-bold text-gray-900 text-base leading-tight flex-1 line-clamp-2">
@@ -110,19 +110,19 @@ export function TaskCard({
           </div>
 
           {/* Row 2: Type, Time, Subject/Topic */}
-          <div className="flex items-center gap-3 flex-wrap text-xs font-medium">
-            <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded-lg border border-gray-200/50">
+          <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
+            <div className="flex items-center gap-1 bg-white/60 px-1.5 py-0.5 rounded-md">
               {getTaskTypeIcon(task.task_type)}
               <span className="capitalize text-gray-700">{task.task_type || 'Lesson'}</span>
             </div>
-            
+
             {task.estimated_minutes && (
-              <div className="flex items-center gap-1 text-gray-500 bg-white/60 px-2 py-1 rounded-lg border border-gray-200/50">
+              <div className="flex items-center gap-1 text-gray-500 bg-white/60 px-1.5 py-0.5 rounded-md">
                 <Clock size={12} className="text-blue-500" />
                 {task.estimated_minutes} min
               </div>
             )}
-            
+
             {(subjectName || topicName) && (
               <span className="text-gray-400 truncate max-w-[150px]">
                 {subjectName} {subjectName && topicName && ' › '} {topicName}
@@ -130,12 +130,12 @@ export function TaskCard({
             )}
           </div>
 
-          <p className="text-gray-500 text-sm line-clamp-2 mt-1">
+          <p className="text-gray-500 text-xs line-clamp-1">
             {task.description}
           </p>
 
           {/* Row 3: Interactive Badges */}
-          <div className="flex flex-wrap items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} size="sm" />
             <InterestLevelIndicator level={(progress?.interest_level ?? 3) as InterestLevel} interactive onSelect={(l) => onUpdateInterest(task, l)} size="sm" />
             <SmartIndicators task={task} />
@@ -149,8 +149,8 @@ export function TaskCard({
       </div>
 
       {/* ── MIDDLE SECTION ──────────────────────────────────── */}
-      <div className="px-5 pb-3 flex-1">
-        <div className="flex flex-col gap-3">
+      <div className="px-3.5 pb-2 flex-1">
+        <div className="flex flex-col gap-2">
           <div className="w-full flex items-center gap-3">
             <span className="text-xs font-bold text-gray-700 w-8 text-right">{task.progressPercent}%</span>
             <div className="flex-1 h-2.5 bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
@@ -165,7 +165,7 @@ export function TaskCard({
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-600 font-medium bg-white/60 px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-gray-600 font-medium bg-white/60 px-2.5 py-1.5 rounded-xl border border-gray-100">
             <span className="flex items-center gap-1.5"><Clock size={12} className="text-gray-400" /> {formatLastPracticed(progress?.last_practiced_at)}</span>
             <span className={task.isOverdue ? 'text-rose-600 font-bold' : task.isDueToday ? 'text-blue-600 font-bold' : ''}>
               <Calendar size={12} className="inline mr-1 text-gray-400" /> Due: {formatDate(progress?.next_due_at)}
@@ -176,7 +176,7 @@ export function TaskCard({
       </div>
 
       {/* ── ACTIONS ─────────────────────────────────────────── */}
-      <div className="px-5 pb-4 mt-auto">
+      <div className="px-3.5 pb-3 mt-auto">
         <TaskQuickActions
           task={task}
           onMarkPracticed={onMarkPracticed}
@@ -193,7 +193,7 @@ export function TaskCard({
         <div className="border-t border-gray-200/50 bg-white/40">
           <button
             onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-            className="w-full flex items-center justify-center py-2 text-gray-400 hover:text-violet-600 hover:bg-white/60 transition-colors"
+            className="w-full flex items-center justify-center py-1.5 text-gray-400 hover:text-violet-600 hover:bg-white/60 transition-colors"
           >
             {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>

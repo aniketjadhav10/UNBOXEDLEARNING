@@ -32,13 +32,13 @@ export function TaskQuickActions({
   const isFullyMastered = isConfident && (task.progress?.learned_count ?? 0) >= (task.progress?.target_count ?? 5);
 
   return (
-    <div className="relative flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+    <div className="relative flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
       {/* Mark Practiced */}
       <button
         id={`practice-${task.id}`}
         onClick={() => onMarkPracticed(task)}
         disabled={isNotStarted || isFullyMastered || task.isPracticedToday}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
       >
         <Plus size={12} />
         {task.isPracticedToday ? 'Practiced Today' : 'Practiced'}
