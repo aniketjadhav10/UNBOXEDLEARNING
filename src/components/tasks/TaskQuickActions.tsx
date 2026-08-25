@@ -45,7 +45,7 @@ export function TaskQuickActions({
       </button>
 
       {/* Stage dropdown */}
-      {/* {!isFullyMastered && (
+      {!isFullyMastered && (
         <div className="relative">
           <button
             onClick={() => setStageMenuOpen((v) => !v)}
@@ -85,7 +85,7 @@ export function TaskQuickActions({
             </>
           )}
         </div>
-      )} */}
+      )}
 
       {/* Reschedule button */}
       <button
