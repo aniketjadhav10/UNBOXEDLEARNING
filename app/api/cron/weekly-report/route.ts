@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import { buildCronCtx } from '@/server/ai/cronCtx';
+import { narrateWeeklySummary } from '@/server/ai/narrateReport';
 
 const supabase = createClient(
   (process.env.NEXT_PUBLIC_SUPABASE_URL as string) || 'https://example.supabase.co',
@@ -30,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { data: children } = await supabase
-      .from('children').select('id, name').order('created_at', { ascending: true });
+      .from('children').select('id, name, user_id').order('created_at', { ascending: true });
 
     if (!children || children.length === 0) {
       return NextResponse.json({ message: 'No children. Email skipped.' });
@@ -55,10 +57,14 @@ export async function GET(req: NextRequest) {
       weeklyStats.push({ childName: child.name, learned, practiced });
     }
 
+    const cronCtx = buildCronCtx(supabase, children[0]?.user_id);
+    const narration = cronCtx ? await narrateWeeklySummary(cronCtx, weeklyStats).catch(() => null) : null;
+
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
         <h1 style="color: #4c1d95;">📊 Weekly Progress Report</h1>
         <p style="color: #64748b;">Here's how the week went:</p>
+        ${narration ? `<p style="color: #4c1d95; font-style: italic; background: #f5f3ff; padding: 12px 16px; border-radius: 10px;">${narration}</p>` : ''}
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           <thead>
             <tr style="background: #f1f5f9;">

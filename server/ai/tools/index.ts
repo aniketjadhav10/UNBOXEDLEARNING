@@ -5,12 +5,13 @@
 // ============================================================
 import { readTools } from './readTools';
 import { writeTools } from './writeTools';
+import { plannerTools } from './plannerTools';
 import type { ToolDef } from './types';
 
 export type { ToolDef, ToolContext } from './types';
 
 /** All tools exposed to AI surfaces. */
-export const tools: ToolDef[] = [...readTools, ...writeTools];
+export const tools: ToolDef[] = [...readTools, ...writeTools, ...plannerTools];
 
 export function getTool(name: string): ToolDef | undefined {
   return tools.find((t) => t.name === name);

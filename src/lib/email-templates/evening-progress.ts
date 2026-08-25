@@ -4,12 +4,13 @@ export interface TaskData {
   progress?: { learning_stage?: string };
 }
 
-export function renderEveningProgressEmail(learnedToday: TaskData[], pending: TaskData[], overdue: TaskData[]) {
+export function renderEveningProgressEmail(learnedToday: TaskData[], pending: TaskData[], overdue: TaskData[], narration?: string) {
   return `
       <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
         <h1 style="color: #6d28d9; text-align: center;">Daily Learning Progress 📚</h1>
         <p style="text-align: center; color: #666;">Here's the summary of today's homeschool tasks.</p>
-        
+        ${narration ? `<p style="text-align: center; color: #4c1d95; font-style: italic; margin: 16px 0;">${narration}</p>` : ''}
+
         <div style="display: flex; justify-content: space-between; margin: 30px 0;">
           <div style="background: #f3f4f6; padding: 15px; border-radius: 10px; width: 30%; text-align: center;">
             <div style="font-size: 24px; font-weight: bold; color: #10b981;">${learnedToday.length}</div>

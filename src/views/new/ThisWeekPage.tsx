@@ -233,6 +233,7 @@ export function ThisWeekPage() {
       {drawerTask && (
         <TaskDetailsDialog
           task={drawerTask}
+          childId={childId}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}
         />

@@ -6,10 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendError, parseJson } from '@/lib/api-utils/http';
 import { z } from 'zod';
 import { createServerSupabase } from '@/lib/supabase/server';
-import { MODEL_NAME, requireGeminiKey, getEmbedding, generateContentTracked } from '@/server/ai/aiClient';
+import { MODEL_NAME, requireGeminiKey, getEmbedding } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { tools } from '@/server/ai/tools';
-import { toGeminiFunctionDeclarations, dispatchToolCall } from '@/server/ai/tools/gemini';
+import { toGeminiFunctionDeclarations } from '@/server/ai/tools/gemini';
+import { runToolLoop } from '@/server/ai/tools/agentLoop';
 import { logger } from '@/server/logger';
 
 export async function POST(req: NextRequest) {
@@ -144,36 +145,15 @@ Respond nicely and concisely. You MUST format all your responses using Markdown.
       tools: [{ functionDeclarations: toGeminiFunctionDeclarations(tools) }],
     };
 
+    // 5. Run the multi-round tool-calling loop — the model can chain several
+    // tool calls (e.g. look something up, then act on it) before answering.
     logger.info('[chat] Calling Gemini...');
-    const response = await generateContentTracked(ctx, {
+    const { text: aiResponseText } = await runToolLoop(ctx, {
       model: MODEL_NAME,
       contents: formattedMessages,
-      config: reqConfig
-    }, 'chat');
-
-    let aiResponseText = response.text || '';
-    const functionCalls = response.functionCalls;
-
-    // 5. Handle Function Calls — dispatched through the shared registry.
-    if (functionCalls && functionCalls.length > 0) {
-      const toolResponses = [];
-
-      for (const call of functionCalls) {
-        const result = await dispatchToolCall(
-          call.name as string,
-          (call.args ?? {}) as Record<string, unknown>,
-          { supabase, userId: user.id },
-        );
-        toolResponses.push({ name: call.name, response: { result } });
-      }
-
-      if (!aiResponseText || toolResponses.length > 0) {
-        formattedMessages.push({ role: 'model', parts: response.candidates?.[0]?.content?.parts || [] });
-        formattedMessages.push({ role: 'user', parts: toolResponses.map(tr => ({ functionResponse: tr })) });
-        const followUp = await generateContentTracked(ctx, { model: MODEL_NAME, contents: formattedMessages, config: reqConfig }, 'chat');
-        aiResponseText = followUp.text || 'Done!';
-      }
-    }
+      config: reqConfig,
+      operation: 'chat',
+    });
 
     // 6. Save messages to DB if sessionId provided
     if (sessionId) {

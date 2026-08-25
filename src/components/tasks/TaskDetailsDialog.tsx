@@ -1,7 +1,7 @@
 // ============================================================
 // TaskDetailsDialog — Centered modal dialog with editable task fields
 // ============================================================
-import { X, BarChart2, Repeat, Clock, Calendar, Lightbulb, Save } from 'lucide-react';
+import { X, BarChart2, Repeat, Clock, Calendar, Lightbulb, Save, Sparkles, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { InterestLevel, LearningStage, TaskWithProgress, UpdateProgressPayload } from '../../types/taskTypes';
@@ -11,9 +11,24 @@ import { TaskProgressRing } from './TaskProgressRing';
 
 interface TaskDetailsDialogProps {
   task: TaskWithProgress | null;
+  childId: string;
   onClose: () => void;
   onUpdateProgress: (payload: UpdateProgressPayload) => void;
 }
+
+interface StageSuggestion {
+  suggestion: 'advance' | 'hold' | 'needs_practice' | 'adjust_pacing';
+  suggestedStage?: string;
+  suggestedRepeatInterval?: number;
+  rationale: string;
+}
+
+const SUGGESTION_LABEL: Record<StageSuggestion['suggestion'], string> = {
+  advance: 'Ready to advance',
+  hold: 'Stay the course',
+  needs_practice: 'Needs more practice',
+  adjust_pacing: 'Adjust pacing',
+};
 
 function formatDate(iso?: string | null) {
   if (!iso) return '—';
@@ -31,7 +46,7 @@ function formatRelative(iso?: string | null) {
   return `${diff} days ago`;
 }
 
-export function TaskDetailsDialog({ task, onClose, onUpdateProgress }: TaskDetailsDialogProps) {
+export function TaskDetailsDialog({ task, childId, onClose, onUpdateProgress }: TaskDetailsDialogProps) {
   const [editNotes, setEditNotes] = useState('');
   const [editStage, setEditStage] = useState<LearningStage | ''>('');
   const [editInterest, setEditInterest] = useState<InterestLevel | 0>(0);
@@ -40,6 +55,8 @@ export function TaskDetailsDialog({ task, onClose, onUpdateProgress }: TaskDetai
   const [editRepeatInterval, setEditRepeatInterval] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [suggestion, setSuggestion] = useState<StageSuggestion | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -50,8 +67,35 @@ export function TaskDetailsDialog({ task, onClose, onUpdateProgress }: TaskDetai
       setEditTargetCount(task.progress?.target_count ?? 5);
       setEditRepeatInterval(task.progress?.repeat_interval ?? 1);
       setErrorMsg('');
+      setSuggestion(null);
     }
   }, [task?.id]);
+
+  async function handleGetSuggestion() {
+    if (!task || !childId) return;
+    setSuggestLoading(true);
+    setSuggestion(null);
+    try {
+      const res = await fetch('/api/ai/suggest-task-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: task.id, child_id: childId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.suggestion) setSuggestion(data.suggestion);
+      else setErrorMsg('No suggestion available for this task right now.');
+    } catch {
+      setErrorMsg('No suggestion available for this task right now.');
+    } finally {
+      setSuggestLoading(false);
+    }
+  }
+
+  function handleApplySuggestion() {
+    if (!suggestion) return;
+    if (suggestion.suggestedStage) setEditStage(suggestion.suggestedStage as LearningStage);
+    if (typeof suggestion.suggestedRepeatInterval === 'number') setEditRepeatInterval(suggestion.suggestedRepeatInterval);
+  }
 
   // Close on Escape key
   useEffect(() => {
@@ -173,6 +217,39 @@ export function TaskDetailsDialog({ task, onClose, onUpdateProgress }: TaskDetai
                 <p className="text-xs font-semibold text-amber-700">Recommended Action</p>
                 <p className="text-xs text-amber-600 mt-0.5">{task.recommendedAction}</p>
               </div>
+            </div>
+
+            {/* AI stage suggestion — advisory only, never applied automatically */}
+            <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
+              {!suggestion && (
+                <button
+                  type="button"
+                  onClick={handleGetSuggestion}
+                  disabled={suggestLoading || !childId}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-violet-700 disabled:opacity-60"
+                >
+                  {suggestLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  {suggestLoading ? 'Thinking…' : 'Get AI suggestion'}
+                </button>
+              )}
+              {suggestion && (
+                <div className="flex items-start gap-2">
+                  <Sparkles size={14} className="text-violet-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-violet-700">{SUGGESTION_LABEL[suggestion.suggestion]}</p>
+                    <p className="text-xs text-violet-600 mt-0.5">{suggestion.rationale}</p>
+                    {(suggestion.suggestedStage || typeof suggestion.suggestedRepeatInterval === 'number') && (
+                      <button
+                        type="button"
+                        onClick={handleApplySuggestion}
+                        className="mt-2 text-xs font-semibold text-violet-700 underline underline-offset-2 hover:text-violet-900"
+                      >
+                        Apply to form below
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ── Editable Fields ── */}

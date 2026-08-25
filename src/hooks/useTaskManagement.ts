@@ -10,6 +10,7 @@ import {
   archiveTask,
   unarchiveTask,
 } from '../services/taskService';
+import { enqueueMarkPracticed } from '../offline/mutationQueue';
 import type {
   TaskWithProgress,
   DashboardSummary,
@@ -73,6 +74,13 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
 
   useEffect(() => { load(); }, [load]);
 
+  // Refresh once queued offline mutations have been synced back to the server.
+  useEffect(() => {
+    const handleSynced = () => load();
+    window.addEventListener('unboxed:queue-synced', handleSynced);
+    return () => window.removeEventListener('unboxed:queue-synced', handleSynced);
+  }, [load]);
+
   // ── Toast helpers ────────────────────────────────────────────
   const addToast = useCallback((type: ToastType, message: string) => {
     const id = ++toastIdRef.current;
@@ -135,12 +143,20 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
       isPracticedToday: true,
     }));
 
+    const progressUpdate = {
+      learned_count: newLearnedCount,
+      learning_stage: newStage,
+      next_due_at: nextDueAt,
+    };
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await enqueueMarkPracticed({ taskId: task.id, taskName: task.name, updates: progressUpdate });
+      addToast('info', `📴 "${task.name}" saved offline — will sync when back online.`);
+      return;
+    }
+
     try {
-      await markPracticedToday(task.id, {
-        learned_count: newLearnedCount,
-        learning_stage: newStage,
-        next_due_at: nextDueAt
-      });
+      await markPracticedToday(task.id, progressUpdate);
       addToast('success', `✅ "${task.name}" marked as practiced!`);
       if (didUpgrade) {
         setTimeout(() => {
@@ -148,6 +164,11 @@ export function useTaskManagement(childId: string, defaultTab: 'all' | 'today' |
         }, 500);
       }
     } catch {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await enqueueMarkPracticed({ taskId: task.id, taskName: task.name, updates: progressUpdate });
+        addToast('info', `📴 "${task.name}" saved offline — will sync when back online.`);
+        return;
+      }
       // Rollback
       patchTask(task.id, () => task);
       addToast('error', 'Failed to update. Please try again.');

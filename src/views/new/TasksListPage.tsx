@@ -280,6 +280,7 @@ export function TasksListPage() {
       {drawerTask && (
         <TaskDetailsDialog
           task={drawerTask}
+          childId={childId}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}
         />

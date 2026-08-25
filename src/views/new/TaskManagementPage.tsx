@@ -351,6 +351,7 @@ export function TaskManagementPage({ defaultTab = 'all' }: { defaultTab?: TabKey
       {drawerTask && (
         <TaskDetailsDialog
           task={drawerTask}
+          childId={childId}
           onClose={() => setDrawerTask(null)}
           onUpdateProgress={handleUpdateProgress}
         />

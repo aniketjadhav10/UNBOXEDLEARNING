@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { renderEveningProgressEmail } from '@/src/lib/email-templates/evening-progress';
+import { buildCronCtx } from '@/server/ai/cronCtx';
+import { narrateEveningSummary } from '@/server/ai/narrateReport';
 
 const supabase = createClient(
   (process.env.NEXT_PUBLIC_SUPABASE_URL as string) || 'https://example.supabase.co',
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
   try {
     // Fetch children and their today's session progress
     const { data: children, error: childrenError } = await supabase
-      .from('children').select('id, name').order('created_at', { ascending: true });
+      .from('children').select('id, name, user_id').order('created_at', { ascending: true });
 
     if (childrenError) throw new Error(childrenError.message);
     if (!children || children.length === 0) {
@@ -79,7 +81,11 @@ export async function GET(req: NextRequest) {
     const label = (childName: string, name: string) => (multiChild ? `[${childName}] ${name}` : name);
     const learnedToday = childReports.flatMap(r => r.learnedTasks.map(name => ({ name: label(r.childName, name) })));
     const pending = childReports.flatMap(r => r.pendingTasks.map(name => ({ name: label(r.childName, name) })));
-    const htmlTemplate = renderEveningProgressEmail(learnedToday, pending, []);
+
+    const cronCtx = buildCronCtx(supabase, children[0]?.user_id);
+    const narration = cronCtx ? await narrateEveningSummary(cronCtx, childReports).catch(() => null) : null;
+
+    const htmlTemplate = renderEveningProgressEmail(learnedToday, pending, [], narration ?? undefined);
 
     await transporter.sendMail({
       from: `"UnBoxed Learning" <${process.env.SMTP_USER}>`,

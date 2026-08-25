@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 import { renderDailyAgendaEmail } from '@/src/lib/email-templates/daily-agenda';
+import { sendPushToSubscriptions } from '@/server/push';
+import { buildCronCtx } from '@/server/ai/cronCtx';
+import { narrateDailyAgendaBody } from '@/server/ai/narrateReport';
 
 const supabase = createClient(
   (process.env.NEXT_PUBLIC_SUPABASE_URL as string) || 'https://example.supabase.co',
@@ -32,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { data: children, error: childrenError } = await supabase
-      .from('children').select('id, name').order('created_at', { ascending: true });
+      .from('children').select('id, name, user_id').order('created_at', { ascending: true });
 
     if (childrenError) throw new Error(childrenError.message);
     if (!children || children.length === 0) {
@@ -79,7 +82,34 @@ export async function GET(req: NextRequest) {
       tasks_learned_count: allActivities.length, tasks_pending_count: 0,
     });
 
-    return NextResponse.json({ success: true, message: `Daily agenda sent with ${allActivities.length} activities.` });
+    let pushSent = 0;
+    try {
+      const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
+      if (subs && subs.length > 0) {
+        const cronCtx = buildCronCtx(supabase, children[0]?.user_id);
+        const staticBody = `${allActivities.length} activit${allActivities.length === 1 ? 'y' : 'ies'} scheduled for today.`;
+        const narratedBody = cronCtx ? await narrateDailyAgendaBody(cronCtx, allActivities) : null;
+
+        const { sent, staleIds } = await sendPushToSubscriptions(subs, {
+          title: "☀️ Today's Agenda",
+          body: narratedBody ?? staticBody,
+          url: '/',
+          tag: 'daily-agenda',
+        });
+        pushSent = sent;
+        if (staleIds.length > 0) {
+          await supabase.from('push_subscriptions').delete().in('id', staleIds);
+        }
+      }
+    } catch {
+      // Push is best-effort — never fail the cron run (or the email that already sent) over it.
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Daily agenda sent with ${allActivities.length} activities.`,
+      pushSent,
+    });
   } catch (error: any) {
     try {
       await supabase.from('email_logs').insert({
