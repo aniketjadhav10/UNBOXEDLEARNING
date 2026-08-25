@@ -4,7 +4,8 @@
 import { Archive, Calendar, ChevronDown, Plus, RotateCcw } from 'lucide-react';
 import type { LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { LEARNING_STAGES } from './LearningStageBadge';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TaskQuickActionsProps {
   task: TaskWithProgress;
@@ -26,29 +27,51 @@ export function TaskQuickActions({
   onExpandDetails,
 }: TaskQuickActionsProps) {
   const [stageMenuOpen, setStageMenuOpen] = useState(false);
+  const [stageMenuPos, setStageMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const stageButtonRef = useRef<HTMLButtonElement>(null);
   const isNotStarted = task.progress?.learning_stage === 'Not_Started';
   const isConfident = task.progress?.learning_stage === 'Confident';
   const isFullyMastered = isConfident && (task.progress?.learned_count ?? 0) >= (task.progress?.target_count ?? 5);
 
+  function openStageMenu() {
+    const rect = stageButtonRef.current?.getBoundingClientRect();
+    if (rect) setStageMenuPos({ top: rect.bottom + 4, left: rect.left });
+    setStageMenuOpen(true);
+  }
+
+  // Close the menu on scroll (its position is computed once on open, not
+  // re-tracked, so scrolling would otherwise leave it floating off the button).
+  useEffect(() => {
+    if (!stageMenuOpen) return;
+    const close = () => setStageMenuOpen(false);
+    document.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [stageMenuOpen]);
+
   return (
-    <div className="relative flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+    <div className="relative flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
       {/* Mark Practiced */}
       <button
         id={`practice-${task.id}`}
         onClick={() => onMarkPracticed(task)}
         disabled={isNotStarted || isFullyMastered || task.isPracticedToday}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
       >
         <Plus size={12} />
         {task.isPracticedToday ? 'Practiced Today' : 'Practiced'}
       </button>
 
       {/* Stage dropdown */}
-      {/* {!isFullyMastered && (
+      {!isFullyMastered && (
         <div className="relative">
           <button
-            onClick={() => setStageMenuOpen((v) => !v)}
+            ref={stageButtonRef}
+            onClick={() => (stageMenuOpen ? setStageMenuOpen(false) : openStageMenu())}
             className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-all duration-200"
           >
             <RotateCcw size={11} />
@@ -56,14 +79,18 @@ export function TaskQuickActions({
             <ChevronDown size={11} className={`transition-transform ${stageMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {stageMenuOpen && (
+          {/* Portaled to <body> so the card's overflow-hidden can't clip it. */}
+          {stageMenuOpen && stageMenuPos && createPortal(
             <>
               <div
-                className="fixed inset-0 z-10"
+                className="fixed inset-0 z-[60]"
                 onClick={() => setStageMenuOpen(false)}
                 aria-hidden="true"
               />
-              <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in">
+              <div
+                className="fixed z-[61] bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in"
+                style={{ top: stageMenuPos.top, left: stageMenuPos.left }}
+              >
                 {LEARNING_STAGES.filter(s =>
                   task.progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true
                 ).map((s) => (
@@ -82,10 +109,11 @@ export function TaskQuickActions({
                   </button>
                 ))}
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
-      )} */}
+      )}
 
       {/* Reschedule button */}
       <button
