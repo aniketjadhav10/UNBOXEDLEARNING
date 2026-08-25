@@ -1,7 +1,7 @@
 // ============================================================
 // SettingsPage — Functional settings with persistence via useSettingsStore
 // ============================================================
-import { Bell, Globe, Moon, Palette, RefreshCw, Shield, User, BrainCircuit, MessageSquareOff } from 'lucide-react';
+import { Bell, Download, Globe, Moon, Palette, Shield, User, BrainCircuit, MessageSquareOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useToast } from '../../store/useToastStore';
@@ -10,6 +10,8 @@ import { CurriculumFormModal, type FormField } from '../../components/curriculum
 import { MemoryManagerModal } from '../../components/chat/MemoryManagerModal';
 import { useState } from 'react';
 import { chatService } from '../../services/chatService';
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '../../pwa/push';
+import { useInstallPrompt } from '../../pwa/InstallPrompt';
 
 // ── Reusable section/row primitives ──────────────────────────
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -110,6 +112,37 @@ export function SettingsPage() {
     language,             setLanguage,
   } = useSettingsStore();
 
+  const { isInstallable, isInstalled, promptInstall } = useInstallPrompt();
+  const [pushBusy, setPushBusy] = useState(false);
+
+  async function handleTogglePush(v: boolean) {
+    if (!isPushSupported()) {
+      toast.error('Push notifications are not supported in this browser.');
+      return;
+    }
+    setPushBusy(true);
+    try {
+      if (v) {
+        await subscribeToPush();
+        setPushNotifications(true);
+        toast.success('Notifications enabled');
+      } else {
+        await unsubscribeFromPush();
+        setPushNotifications(false);
+        toast.success('Notifications disabled');
+      }
+    } catch (err) {
+      toast.error((err as Error).message || 'Failed to update push notifications');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function handleInstall() {
+    const accepted = await promptInstall();
+    if (accepted) toast.success('Installing UnBoxed Learning…');
+  }
+
   async function handleSignOut() {
     await signOut();
     toast.info('Signed out successfully');
@@ -133,6 +166,20 @@ export function SettingsPage() {
       </div>
 
       <SettingsSection title="Account">
+        {(isInstallable || isInstalled) && (
+          <SettingsRow
+            icon={Download}
+            label="Install App"
+            desc={isInstalled ? 'Installed on this device' : 'Add UnBoxed Learning to your home screen'}
+            control={
+              isInstalled ? (
+                <span className="text-xs text-emerald-600 font-semibold">Installed</span>
+              ) : (
+                <button onClick={handleInstall} className="text-xs text-violet-600 font-semibold hover:text-violet-800">Install</button>
+              )
+            }
+          />
+        )}
         <SettingsRow
           icon={User}
           label="Profile"
@@ -170,7 +217,7 @@ export function SettingsPage() {
           control={
             <Toggle
               value={pushNotifications}
-              onChange={(v) => { setPushNotifications(v); toast.success(v ? 'Notifications enabled' : 'Notifications disabled'); }}
+              onChange={pushBusy ? () => {} : handleTogglePush}
               ariaLabel="Toggle push notifications"
             />
           }
