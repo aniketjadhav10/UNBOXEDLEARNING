@@ -36,7 +36,12 @@ export function PendingApprovalPage() {
       // Force reload to refresh user profile permissions
       window.location.reload();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to join family. Invalid code.');
+      const message = error.message || 'Failed to join family. Invalid code.';
+      toast.error(
+        message.includes('different email address')
+          ? `${message} Sign out and register or sign in with the email the invite was sent to, or ask the family owner to resend it to your email.`
+          : message,
+      );
     } finally {
       setIsJoining(false);
     }

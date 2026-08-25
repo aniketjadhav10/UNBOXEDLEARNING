@@ -54,13 +54,21 @@ export async function middleware(request: NextRequest) {
   };
 
   // ── Public routes — always accessible ────────────────────
+  // NOTE: '/' is intentionally NOT public — unauthenticated visitors to the
+  // root URL should land on /login (with the Register link below it), not
+  // the dashboard shell.
   const isPublicRoute =
     pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
+    pathname === '/sw.js' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname.startsWith('/icons/') ||
     pathname.startsWith('/api/cron') || // cron routes secured by CRON_SECRET header
-    pathname.startsWith('/api/mcp') || // MCP server secured by Bearer-token auth in-handler
-    pathname === '/';
+    pathname.startsWith('/api/mcp'); // MCP server secured by Bearer-token auth in-handler
 
   // ── Redirect unauthenticated users to /login ─────────────
   if (!user && !isPublicRoute) {

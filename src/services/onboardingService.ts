@@ -15,11 +15,12 @@ export async function ensureFamily(name: string): Promise<string> {
 
   // ── 1. Ensure profiles row exists ────────────────────────────
   // For new Google OAuth users the profiles trigger can lag — insert-if-absent
-  // so the FK is satisfied for all subsequent operations.
+  // so the FK is satisfied for all subsequent operations. is_admin is granted
+  // server-side by the create_family_workspace RPC below, not here.
   await supabase
     .from('profiles')
     .upsert(
-      { id: authUser.id, is_admin: true },
+      { id: authUser.id },
       { onConflict: 'id', ignoreDuplicates: true },
     );
 
@@ -78,7 +79,7 @@ export async function addChild(userId: string, input: ChildInput): Promise<strin
   const { error: profileErr } = await supabase
     .from('profiles')
     .upsert(
-      { id: userId, is_admin: true },
+      { id: userId },
       { onConflict: 'id', ignoreDuplicates: true },
     );
   if (profileErr) {
@@ -86,9 +87,19 @@ export async function addChild(userId: string, input: ChildInput): Promise<strin
     console.warn('[addChild] Profile upsert warning:', profileErr.message);
   }
 
+  // ── Look up family_id so the child is visible to co-parents ──
+  // Without this, RLS (family_id = user_family_id() OR auth.uid() = user_id)
+  // only lets the creating parent see the child until a co-parent joins.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('family_id')
+    .eq('id', userId)
+    .maybeSingle();
+
   // ── Insert child ─────────────────────────────────────────────
   const child = await createItem<{ id: string }>('children', {
     user_id: userId,
+    family_id: profile?.family_id ?? null,
     name: input.name,
     grade_level: input.grade_level,
     date_of_birth: input.date_of_birth || null,

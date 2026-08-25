@@ -10,6 +10,15 @@ export async function PATCH(req: NextRequest) {
     const { id } = await parseJson(req, z.object({ id: z.string().uuid() }));
     const supabase = await createServerSupabase();
 
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
+    }
+    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+    if (!profile?.is_admin) {
+      return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
+    }
+
     const { data: task, error: taskError } = await supabase
       .from('tasks').select('id, topic_id, name, description, updated_at').eq('id', id).single();
     if (taskError) throw taskError;
