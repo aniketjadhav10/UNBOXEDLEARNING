@@ -185,6 +185,40 @@ export async function findOrCreateSubject(
   return { id: inserted.id as string, action: 'created' };
 }
 
+export interface ExistingSubjectMatch { id: string; name: string; description: string | null; development_domain: string | null }
+
+/** Read-only version of findOrCreateSubject's lookup — never creates or patches. */
+export async function checkExistingSubject(
+  supabase: SupabaseClient,
+  name: string,
+  description: string,
+): Promise<ExistingSubjectMatch | null> {
+  const embedding = await getEmbedding(`${name} ${description || ''}`.trim());
+  if (embedding) {
+    const { data: matches, error } = await supabase.rpc('match_subjects', {
+      query_embedding: embedding,
+      match_threshold: SIMILARITY_THRESHOLD,
+      match_count: 1,
+    });
+    if (error) logger.warn(`[checkExistingSubject] RPC error: ${error.message}`);
+    if (matches && matches.length > 0) {
+      const { data: row } = await supabase
+        .from('subjects')
+        .select('id, name, description, development_domain')
+        .eq('id', matches[0].id)
+        .maybeSingle();
+      if (row) return row as ExistingSubjectMatch;
+    }
+  }
+
+  const { data: exact } = await supabase
+    .from('subjects')
+    .select('id, name, description, development_domain')
+    .ilike('name', name)
+    .maybeSingle();
+  return (exact as ExistingSubjectMatch) ?? null;
+}
+
 async function mergeSubject(
   supabase: SupabaseClient,
   id: string,
@@ -265,6 +299,35 @@ export async function findOrCreateTopic(
     .single();
   if (insertErr) throw insertErr;
   return { id: inserted.id as string, action: 'created' };
+}
+
+export interface ExistingTopicMatch { id: string; title: string }
+
+/** Read-only version of findOrCreateTopic's lookup — never creates or patches. */
+export async function checkExistingTopic(
+  supabase: SupabaseClient,
+  subjectId: string,
+  title: string,
+): Promise<ExistingTopicMatch | null> {
+  const embedding = await getEmbedding(title);
+  if (embedding) {
+    const { data: matches, error } = await supabase.rpc('match_topics', {
+      query_embedding: embedding,
+      subject_id_filter: subjectId,
+      match_threshold: SIMILARITY_THRESHOLD,
+      match_count: 1,
+    });
+    if (error) logger.warn(`[checkExistingTopic] RPC error: ${error.message}`);
+    if (matches && matches.length > 0) return { id: matches[0].id, title: matches[0].title };
+  }
+
+  const { data: exact } = await supabase
+    .from('topics')
+    .select('id, title')
+    .eq('subject_id', subjectId)
+    .ilike('title', title)
+    .maybeSingle();
+  return (exact as ExistingTopicMatch) ?? null;
 }
 
 async function mergeTopic(

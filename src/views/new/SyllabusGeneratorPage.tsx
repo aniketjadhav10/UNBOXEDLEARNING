@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Camera, FileText, Upload, Sparkles, Loader2, BrainCircuit, ListTree, Globe } from 'lucide-react';
+import { Camera, FileText, Upload, Sparkles, Loader2, BrainCircuit, ListTree, Globe, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '../../store/useToastStore';
 import { useData } from '../../context/DataContext';
@@ -7,11 +7,14 @@ import { supabase } from '../../services/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SyllabusReviewPanel } from '../../components/curriculum/SyllabusReviewPanel';
 import { clearCache } from '../../services/cacheService';
+import { DEVELOPMENT_DOMAINS } from '../../types/domains';
 
 type InputType = 'text' | 'file' | 'camera' | 'url';
-type GenerationStatus = 'idle' | 'planning' | 'chunking' | 'writing' | 'linking' | 'complete' | 'error';
+type GeneratorMode = 'describe' | 'exactTopics';
+type GenerationStatus = 'idle' | 'planning' | 'checking' | 'chunking' | 'writing' | 'linking' | 'complete' | 'error';
 
 export function SyllabusGeneratorPage() {
+  const [mode, setMode] = useState<GeneratorMode>('describe');
   const [inputType, setInputType] = useState<InputType>('text');
   const [textInput, setTextInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
@@ -23,6 +26,13 @@ export function SyllabusGeneratorPage() {
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [topicsCount, setTopicsCount] = useState<number>(5);
   const [tasksPerTopic, setTasksPerTopic] = useState<number>(3);
+
+  // "Provide exact topics" mode
+  const [subjectName, setSubjectName] = useState('');
+  const [subjectDescription, setSubjectDescription] = useState('');
+  const [developmentDomain, setDevelopmentDomain] = useState<string>('academic');
+  const [topicsListInput, setTopicsListInput] = useState('');
+  const parsedTopics = topicsListInput.split('\n').map((s) => s.trim()).filter(Boolean);
 
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle');
   const [generationMessage, setGenerationMessage] = useState('');
@@ -65,15 +75,17 @@ export function SyllabusGeneratorPage() {
     try {
       let sourceText = textInput;
 
-      // Multimodal ingestion: turn a PDF/photo/URL into source text first.
-      if (inputType === 'file' || inputType === 'camera') {
-        if (!file) { toast.error('Please choose a file first.'); setGenerationStatus('idle'); return; }
-        setGenerationMessage('Reading your document with AI…');
-        sourceText = await extractSource({ file });
-      } else if (inputType === 'url') {
-        if (!urlInput) { toast.error('Enter a URL first.'); setGenerationStatus('idle'); return; }
-        setGenerationMessage('Fetching and reading the page…');
-        sourceText = await extractSource({ url: urlInput });
+      // Multimodal ingestion (describe mode only): turn a PDF/photo/URL into source text first.
+      if (mode === 'describe') {
+        if (inputType === 'file' || inputType === 'camera') {
+          if (!file) { toast.error('Please choose a file first.'); setGenerationStatus('idle'); return; }
+          setGenerationMessage('Reading your document with AI…');
+          sourceText = await extractSource({ file });
+        } else if (inputType === 'url') {
+          if (!urlInput) { toast.error('Enter a URL first.'); setGenerationStatus('idle'); return; }
+          setGenerationMessage('Fetching and reading the page…');
+          sourceText = await extractSource({ url: urlInput });
+        }
       }
 
       const activeChildId = selectedChildId || kids[0]?.id;
@@ -81,20 +93,30 @@ export function SyllabusGeneratorPage() {
 
       const { data: { session } } = await supabase.auth.getSession();
 
+      const requestBody = mode === 'exactTopics'
+        ? {
+            topics: parsedTopics, subjectName, subjectDescription, developmentDomain,
+            age, skillLevel, targetGrade: targetGrade === 'None' ? null : targetGrade,
+            isGlobal, tasksPerTopic, preview: reviewMode,
+            childId: activeChildId || undefined,
+            interests: selectedKid?.interests ?? [],
+          }
+        : {
+            sourceText, age, skillLevel,
+            targetGrade: targetGrade === 'None' ? null : targetGrade,
+            isGlobal, topicsCount, tasksPerTopic,
+            preview: reviewMode,
+            childId: activeChildId || undefined,
+            interests: selectedKid?.interests ?? [],
+          };
+
       const response = await fetch('/api/ai/generate-syllabus', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': session ? `Bearer ${session.access_token}` : ''
         },
-        body: JSON.stringify({
-          sourceText, age, skillLevel,
-          targetGrade: targetGrade === 'None' ? null : targetGrade,
-          isGlobal, topicsCount, tasksPerTopic,
-          preview: reviewMode,
-          childId: activeChildId || undefined,
-          interests: selectedKid?.interests ?? [],
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) throw new Error('Failed to generate syllabus');
@@ -122,6 +144,16 @@ export function SyllabusGeneratorPage() {
                 setGenerationMessage(data.message || '');
 
                 if (data.status === 'draft') {
+                  const skipped: string[] = data.draft?.skippedExisting ?? [];
+                  if (skipped.length > 0) {
+                    toast.info(`${skipped.length} topic${skipped.length === 1 ? '' : 's'} already existed in this subject and ${skipped.length === 1 ? 'was' : 'were'} skipped.`);
+                  }
+                  if (Array.isArray(data.draft?.topics) && data.draft.topics.length === 0) {
+                    // Nothing new to review — every topic already existed.
+                    toast.info('All topics already exist in this subject — nothing new to generate.');
+                    setGenerationStatus('idle');
+                    return;
+                  }
                   // Review-before-save: show the editable tree, persist nothing yet.
                   setDraft(data.draft);
                   setCommitMeta({ childId: activeChildId || undefined, isGlobal });
@@ -222,6 +254,7 @@ export function SyllabusGeneratorPage() {
               <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-violet-100 p-8 flex flex-col items-center text-center">
 
                 {generationStatus === 'planning' && <BrainCircuit className="w-16 h-16 text-violet-500 animate-pulse mb-4" />}
+                {generationStatus === 'checking' && <Search className="w-16 h-16 text-teal-500 animate-pulse mb-4" />}
                 {generationStatus === 'chunking' && <ListTree className="w-16 h-16 text-blue-500 animate-bounce mb-4" />}
                 {generationStatus === 'writing' && <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-4" />}
 
@@ -231,7 +264,7 @@ export function SyllabusGeneratorPage() {
                   <motion.div
                     className="bg-gradient-to-r from-violet-500 to-indigo-500 h-full rounded-full"
                     initial={{ width: "10%" }}
-                    animate={{ width: generationStatus === 'planning' ? '30%' : generationStatus === 'chunking' ? '50%' : '85%' }}
+                    animate={{ width: generationStatus === 'planning' ? '20%' : generationStatus === 'checking' ? '35%' : generationStatus === 'chunking' ? '55%' : '85%' }}
                     transition={{ duration: 0.5 }}
                   />
                 </div>
@@ -243,6 +276,79 @@ export function SyllabusGeneratorPage() {
           )}
         </AnimatePresence>
 
+        {/* Mode switcher */}
+        <div className="mb-8">
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl w-fit">
+            <button
+              onClick={() => setMode('describe')}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'describe' ? 'bg-white shadow text-violet-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Describe with AI
+            </button>
+            <button
+              onClick={() => setMode('exactTopics')}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${mode === 'exactTopics' ? 'bg-white shadow text-violet-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Provide exact topics
+            </button>
+          </div>
+        </div>
+
+        {mode === 'exactTopics' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-100 space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name</label>
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="e.g. Public Interaction & Social Skills"
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subject Description <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={subjectDescription}
+                onChange={(e) => setSubjectDescription(e.target.value)}
+                placeholder="Briefly describe this subject..."
+                className="w-full h-20 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Development Domain</label>
+              <select
+                value={developmentDomain}
+                onChange={(e) => setDevelopmentDomain(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+              >
+                {DEVELOPMENT_DOMAINS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.emoji} {d.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Topics <span className="text-gray-400 font-normal">(one per line, in order)</span>
+                </label>
+                <span className="text-xs text-gray-400">{parsedTopics.length} topic{parsedTopics.length === 1 ? '' : 's'}</span>
+              </div>
+              <textarea
+                value={topicsListInput}
+                onChange={(e) => setTopicsListInput(e.target.value)}
+                placeholder={'Saying Hello\nSaying Goodbye\nEye Contact\n...'}
+                className="w-full h-64 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all resize-none font-mono text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-2">Each line becomes exactly one topic — the AI will not rename, merge, drop, or add topics. Topics that already exist in this subject are detected and skipped automatically.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {mode === 'describe' && (
+        <>
         {/* Input Type Selector */}
         <div className="mb-8">
           <label className="block text-sm font-semibold text-gray-700 mb-3">Source Material</label>
@@ -330,6 +436,8 @@ export function SyllabusGeneratorPage() {
             </motion.div>
           )}
         </div>
+        </>
+        )}
 
         {kids.length > 0 && (
           <div className="mb-6">
@@ -358,10 +466,12 @@ export function SyllabusGeneratorPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Target Age</label>
             <input type="number" min={3} max={18} value={age} onChange={(e) => setAge(parseInt(e.target.value) || 3)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Topics Count</label>
-            <input type="number" min={1} max={50} value={topicsCount} onChange={(e) => setTopicsCount(parseInt(e.target.value) || 1)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
-          </div>
+          {mode === 'describe' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Topics Count</label>
+              <input type="number" min={1} max={50} value={topicsCount} onChange={(e) => setTopicsCount(parseInt(e.target.value) || 1)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Tasks per Topic</label>
             <input type="number" min={1} max={10} value={tasksPerTopic} onChange={(e) => setTasksPerTopic(parseInt(e.target.value) || 1)} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all" />
@@ -408,7 +518,15 @@ export function SyllabusGeneratorPage() {
 
         <button
           onClick={handleGenerate}
-          disabled={isGenerating || (inputType === 'text' && !textInput) || ((inputType === 'file' || inputType === 'camera') && !file) || (inputType === 'url' && !urlInput)}
+          disabled={
+            isGenerating ||
+            (mode === 'describe' && (
+              (inputType === 'text' && !textInput) ||
+              ((inputType === 'file' || inputType === 'camera') && !file) ||
+              (inputType === 'url' && !urlInput)
+            )) ||
+            (mode === 'exactTopics' && (!subjectName.trim() || parsedTopics.length === 0))
+          }
           className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex justify-center items-center gap-2"
         >
           {isGenerating ? (

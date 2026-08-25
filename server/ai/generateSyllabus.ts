@@ -9,6 +9,8 @@ import type { GatewayCtx } from './gateway';
 import { buildDirectorPrompt } from './agents/directorAgent';
 import { buildSmePrompt } from './agents/smeAgent';
 import type { SyllabusDraft } from './persistSyllabus';
+import { checkExistingSubject, checkExistingTopic } from './aiDb';
+import { logger } from '../logger';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -55,27 +57,29 @@ export interface AssembleParams {
   onEvent?: (e: Record<string, unknown>) => Promise<void> | void;
 }
 
+interface ExpandTopicsParams {
+  topics: any[]; // {title, description, difficulty_level, age_group, learning_objectives, estimated_hours, bloom_level, keywords}
+  age: number;
+  skillLevel: string;
+  tasksPerTopic: number;
+  interests: string[];
+  ctx: GatewayCtx;
+  onEvent?: (e: Record<string, unknown>) => Promise<void> | void;
+  /** ai_usage operation string for the SME calls — defaults to 'generate_syllabus'. */
+  operation?: string;
+}
+
 /**
- * Run the Director agent (subject + topic outline) then the SME agents in
- * parallel (each topic → skill tree + tasks), and assemble the full draft.
- * Persists nothing — the caller decides (preview vs. save vs. global).
+ * Chunk a topic outline into ≤5 batches and expand each in parallel via the
+ * SME agent (topic → skill tree + tasks), merging the result back onto each
+ * topic's Director-provided (or synthesized) metadata. Shared by the
+ * Director-driven path and the explicit-topic-list path below.
  */
-export async function assembleSyllabusDraft(p: AssembleParams): Promise<SyllabusDraft> {
+async function expandTopicsWithSme(p: ExpandTopicsParams): Promise<any[]> {
   const emit = async (e: Record<string, unknown>) => { await p.onEvent?.(e); };
+  const allTopics = p.topics;
+  const operation = p.operation ?? 'generate_syllabus';
 
-  // STEP 1: Director — subject + topics
-  await emit({ status: 'planning', message: 'Director Agent: planning curriculum structure…' });
-  const directorRaw = await generateJson(
-    buildDirectorPrompt({
-      sourceText: p.sourceText, age: p.age, skillLevel: p.skillLevel,
-      targetGrade: p.targetGrade, topicsCount: p.topicsCount, interests: p.interests,
-    }),
-    { ctx: p.ctx, operation: 'generate_syllabus' },
-  );
-  const directorData = extractJson(directorRaw);
-  const allTopics: any[] = directorData.topics ?? [];
-
-  // STEP 2: chunk topics for parallel SME expansion (max 5 batches)
   const maxChunks = 5;
   const chunkSize = Math.max(Math.ceil(allTopics.length / maxChunks), 2);
   const topicChunks: any[][] = [];
@@ -84,12 +88,11 @@ export async function assembleSyllabusDraft(p: AssembleParams): Promise<Syllabus
   }
   await emit({ status: 'chunking', message: `Expanding ${allTopics.length} topics in ${topicChunks.length} batches…` });
 
-  // STEP 3: SME (parallel) — each topic → skills + tasks
   const chunkResults = await Promise.all(topicChunks.map(async (chunk, idx) => {
     await emit({ status: 'writing', message: `SME Agent: batch ${idx + 1}/${topicChunks.length}…` });
     const smeRaw = await generateJson(
       buildSmePrompt({ topics: chunk, age: p.age, skillLevel: p.skillLevel, tasksPerTopic: p.tasksPerTopic, interests: p.interests }),
-      { ctx: p.ctx, operation: 'generate_syllabus' },
+      { ctx: p.ctx, operation },
     );
     const smeData = extractJson(smeRaw);
 
@@ -119,5 +122,127 @@ export async function assembleSyllabusDraft(p: AssembleParams): Promise<Syllabus
     });
   }));
 
-  return { subject: directorData.subject, topics: chunkResults.flat() };
+  return chunkResults.flat();
+}
+
+/**
+ * Run the Director agent (subject + topic outline) then the SME agents in
+ * parallel (each topic → skill tree + tasks), and assemble the full draft.
+ * Persists nothing — the caller decides (preview vs. save vs. global).
+ */
+export async function assembleSyllabusDraft(p: AssembleParams): Promise<SyllabusDraft> {
+  const emit = async (e: Record<string, unknown>) => { await p.onEvent?.(e); };
+
+  // STEP 1: Director — subject + topics
+  await emit({ status: 'planning', message: 'Director Agent: planning curriculum structure…' });
+  const directorRaw = await generateJson(
+    buildDirectorPrompt({
+      sourceText: p.sourceText, age: p.age, skillLevel: p.skillLevel,
+      targetGrade: p.targetGrade, topicsCount: p.topicsCount, interests: p.interests,
+    }),
+    { ctx: p.ctx, operation: 'generate_syllabus' },
+  );
+  const directorData = extractJson(directorRaw);
+  const allTopics: any[] = directorData.topics ?? [];
+
+  // STEP 2+3: chunk + SME expansion (shared with the explicit-topic-list path)
+  const topics = await expandTopicsWithSme({
+    topics: allTopics, age: p.age, skillLevel: p.skillLevel, tasksPerTopic: p.tasksPerTopic,
+    interests: p.interests, ctx: p.ctx, onEvent: p.onEvent,
+  });
+
+  return { subject: directorData.subject, topics };
+}
+
+export interface AssembleFromTopicListParams {
+  subjectName: string;
+  subjectDescription: string;
+  developmentDomain: string;
+  topicTitles: string[];
+  age: number;
+  skillLevel: string;
+  tasksPerTopic: number;
+  interests: string[];
+  ctx: GatewayCtx;
+  onEvent?: (e: Record<string, unknown>) => Promise<void> | void;
+}
+
+/**
+ * Skip the Director agent entirely — the caller supplies the subject and the
+ * exact topic list. Before generating anything, checks the given subject and
+ * each given topic against what already exists (same vector-similarity
+ * matching as the persist-time dedup) so AI generation only runs for what's
+ * actually missing. Each remaining topic is expanded 1:1 by the SME agent
+ * (which already guarantees title fidelity) — never renamed, merged,
+ * dropped, or added.
+ */
+export async function assembleSyllabusFromTopicList(
+  p: AssembleFromTopicListParams,
+): Promise<SyllabusDraft & { skippedExisting: string[] }> {
+  const emit = async (e: Record<string, unknown>) => { await p.onEvent?.(e); };
+
+  await emit({ status: 'checking', message: 'Checking for existing subject and topics…' });
+
+  const existingSubject = await checkExistingSubject(p.ctx.supabase, p.subjectName, p.subjectDescription);
+
+  // Only compare topics if the subject itself already exists — a brand-new
+  // subject can't have any existing topics to match against.
+  let missingTitles = p.topicTitles;
+  let skippedExisting: string[] = [];
+  if (existingSubject) {
+    const results = await Promise.all(
+      p.topicTitles.map(async (title) => ({
+        title,
+        match: await checkExistingTopic(p.ctx.supabase, existingSubject.id, title),
+      })),
+    );
+    missingTitles = results.filter((r) => !r.match).map((r) => r.title);
+    skippedExisting = results.filter((r) => r.match).map((r) => r.title);
+  }
+
+  if (skippedExisting.length > 0) {
+    await emit({
+      status: 'checking',
+      message: `${skippedExisting.length} of ${p.topicTitles.length} topics already exist and will be skipped.`,
+    });
+  }
+
+  const subject = existingSubject
+    ? {
+        name: existingSubject.name,
+        description: existingSubject.description ?? '',
+        development_domain: existingSubject.development_domain ?? p.developmentDomain,
+      }
+    : { name: p.subjectName, description: p.subjectDescription, development_domain: p.developmentDomain };
+
+  if (missingTitles.length === 0) {
+    return { subject, topics: [], skippedExisting };
+  }
+
+  const seedTopics = missingTitles.map((title) => ({
+    title,
+    description: '',
+    difficulty_level: 'Beginner',
+    age_group: String(p.age),
+    learning_objectives: [],
+    estimated_hours: 1,
+    bloom_level: 'Understand',
+    keywords: [],
+  }));
+
+  const topics = await expandTopicsWithSme({
+    topics: seedTopics, age: p.age, skillLevel: p.skillLevel, tasksPerTopic: p.tasksPerTopic,
+    interests: p.interests, ctx: p.ctx, onEvent: p.onEvent, operation: 'generate_syllabus_topics',
+  });
+
+  // Fidelity check on the topics that WERE sent to SME (independent of the
+  // existing-content skip above) — SME's title-preservation is a prompted
+  // instruction, not a hard guarantee, so log (don't fail) if it drops one.
+  const gotTitles = new Set(topics.map((t) => t.title));
+  const missingAfterSme = missingTitles.filter((t) => !gotTitles.has(t));
+  if (missingAfterSme.length > 0) {
+    logger.warn(`[assembleSyllabusFromTopicList] SME dropped ${missingAfterSme.length} topic(s): ${missingAfterSme.join(', ')}`);
+  }
+
+  return { subject, topics, skippedExisting };
 }
