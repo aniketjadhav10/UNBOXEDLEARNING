@@ -18,23 +18,39 @@ import {
   type FamilyInvitation,
   type ProfileWithFamily,
 } from '../../../services/familyService';
+import { addChild } from '../../../services/onboardingService';
 import { useAdminStore } from '../../../store/useAdminStore';
-import { User, Mail, Shield, Plus, Copy, Check, Clock, Sparkles, UserPlus, Key, Trash2, LogOut, X } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { User, Mail, Shield, Plus, Copy, Check, Clock, Sparkles, UserPlus, Key, Trash2, LogOut, X, Baby } from 'lucide-react';
+
+function joinCodeErrorMessage(rawMessage: string): string {
+  if (rawMessage.includes('different email address')) {
+    return `${rawMessage} Sign out and register or sign in with the email the invite was sent to, or ask the family owner to resend it to your email.`;
+  }
+  return rawMessage;
+}
 
 export function FamilyPage() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileWithFamily | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);
-  
+
   // Non-member form states
   const [familyName, setFamilyName] = useState('');
   const [joinCode, setJoinCode] = useState('');
-  
+
   // Invite modal states
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [devModeCode, setDevModeCode] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Add-child modal state
+  const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
+  const [childName, setChildName] = useState('');
+  const [childGrade, setChildGrade] = useState('');
+  const [childDob, setChildDob] = useState('');
 
   const { loading, setLoading, showToast } = useAdminStore();
 
@@ -89,7 +105,31 @@ export function FamilyPage() {
       showToast({ message: `Successfully joined the ${result.family_name} workspace!`, type: 'success' });
       await loadProfile();
     } catch (error) {
-      showToast({ message: error instanceof Error ? error.message : 'Unable to join family. Verify the code.', type: 'error' });
+      const message = error instanceof Error ? error.message : 'Unable to join family. Verify the code.';
+      showToast({ message: joinCodeErrorMessage(message), type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddChild(event: FormEvent) {
+    event.preventDefault();
+    if (!childName.trim() || !childGrade.trim() || !user) return;
+
+    setLoading(true);
+    try {
+      await addChild(user.id, {
+        name: childName.trim(),
+        grade_level: childGrade.trim(),
+        date_of_birth: childDob || undefined,
+      });
+      showToast({ message: `${childName.trim()} was added successfully!`, type: 'success' });
+      setChildName('');
+      setChildGrade('');
+      setChildDob('');
+      setIsAddChildModalOpen(false);
+    } catch (error) {
+      showToast({ message: error instanceof Error ? error.message : 'Unable to add child', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -228,6 +268,13 @@ export function FamilyPage() {
                 </p>
               </div>
               <div className="flex flex-col md:flex-row gap-3 self-start md:self-center">
+                <button
+                  onClick={() => setIsAddChildModalOpen(true)}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-bold text-white backdrop-blur-sm shadow-md hover:bg-white/25 transition-all duration-200 active:scale-95 border border-white/20"
+                >
+                  <Baby size={16} />
+                  Add Child
+                </button>
                 {isOwner && (
                   <button
                     onClick={() => {
@@ -549,7 +596,7 @@ export function FamilyPage() {
                 />
 
                 <p className="text-[10px] text-ink/50 leading-relaxed">
-                  <strong>Important:</strong> The invited member must sign in to UnBoxed Learning using this email address via Email OTP to claim the workspace access.
+                  <strong>Important:</strong> The invited member must register or sign in to UnBoxed Learning using this exact email address to claim the workspace access.
                 </p>
 
                 <div className="flex justify-end gap-3 pt-2">
@@ -572,6 +619,65 @@ export function FamilyPage() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================== DIALOG MODAL: ADD CHILD ==================== */}
+      {isAddChildModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-black/5 relative animate-scale-up space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-ink flex items-center gap-2">
+                <Baby className="text-violet-600" size={20} />
+                Add Child
+              </h3>
+              <p className="text-xs text-ink/60 mt-1">
+                Adds a new child profile, visible to every member of this family workspace.
+              </p>
+            </div>
+
+            <form onSubmit={handleAddChild} className="space-y-4">
+              <InputField
+                label="Child's Name"
+                onChange={(event) => setChildName(event.target.value)}
+                placeholder="e.g. Emma"
+                required
+                value={childName}
+                className="bg-slate-50 focus:bg-white"
+              />
+              <InputField
+                label="Grade Level"
+                onChange={(event) => setChildGrade(event.target.value)}
+                placeholder="e.g. Grade 3"
+                required
+                value={childGrade}
+                className="bg-slate-50 focus:bg-white"
+              />
+              <InputField
+                label="Date of Birth"
+                type="date"
+                onChange={(event) => setChildDob(event.target.value)}
+                value={childDob}
+                className="bg-slate-50 focus:bg-white"
+              />
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddChildModalOpen(false)}
+                  className="px-4 py-2 border border-black/10 hover:bg-slate-50 text-ink/70 font-semibold rounded-xl text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <Button
+                  type="submit"
+                  className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl text-xs hover:from-violet-700 hover:to-indigo-700 shadow-md transition-all duration-200 active:scale-95"
+                >
+                  Add Child
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

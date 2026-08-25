@@ -1,3 +1,3 @@
 'use client';
-import { TaskManagementPage } from '@/src/views/new/TaskManagementPage';
-export default function Page() { return <TaskManagementPage />; }
+import { CurriculumPage } from '@/src/views/new/CurriculumPage';
+export default function Page() { return <CurriculumPage initialView="tasks" />; }

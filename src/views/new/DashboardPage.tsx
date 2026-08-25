@@ -1,25 +1,33 @@
 // Dashboard Page — uses real Supabase data via DataContext
 import {
   Activity,
-  BookOpen,
+  AlertCircle,
+  Calendar,
+  Check,
   CheckCircle2,
   Clock,
   GraduationCap,
   ListChecks,
   RefreshCw,
+  SkipForward,
+  Sparkles,
   TrendingUp,
   Users,
+  Wand2,
   Zap,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { SkeletonCard } from '../../components/ui/SkeletonCard';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useTaskManagement } from '../../hooks/useTaskManagement';
 import { fetchTasksWithProgress, computeDashboardSummary } from '../../services/taskService';
+import { fetchSessions, updateSessionStatus, type ScheduledSessionView } from '../../services/scheduleService';
 import { DashboardSummaryWidgets } from '../../components/tasks/DashboardSummaryWidgets';
+import { masteryRung, type LearningStage } from '../../lib/masteryLadder';
 import type { DashboardSummary } from '../../types/taskTypes';
 import { StaggerContainer, StaggerItem, ScaleOnHover, AnimatedCounter } from '../../components/motion/MotionWrappers';
 
@@ -61,9 +69,9 @@ function SectionHeader({ title, actionLabel, onAction }: {
 }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-base font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">{title}</h2>
+      <h2 className="font-display text-base font-bold text-gray-800">{title}</h2>
       {actionLabel && (
-        <button onClick={onAction} className="text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
+        <button onClick={onAction} className="text-xs font-semibold text-accent-pink hover:opacity-80 transition-opacity">
           {actionLabel} →
         </button>
       )}
@@ -75,7 +83,7 @@ function SectionHeader({ title, actionLabel, onAction }: {
 export function DashboardPage() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
-  const { kids, subjects, topics, tasks, loading, error, isEmpty, refresh } = useData();
+  const { kids, subjects, topics, tasks, rawSubjects, rawTopics, rawTasks, loading, error, isEmpty, refresh } = useData();
   const { selectedChildId } = useSettingsStore();
 
   const resolvedChildId = selectedChildId || (kids.length === 1 ? kids[0].id : null);
@@ -83,6 +91,57 @@ export function DashboardPage() {
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // ── "Needs Attention Today" — overdue/due-today tasks + today's scheduled sessions ──
+  const {
+    tasks: allTasksWithProgress,
+    handleMarkPracticed,
+  } = useTaskManagement(childId, 'all');
+
+  const needsAttentionTasks = useMemo(
+    () => allTasksWithProgress.filter((t) => t.is_active !== false && (t.isOverdue || t.isDueToday)).slice(0, 5),
+    [allTasksWithProgress],
+  );
+
+  const [todaySessions, setTodaySessions] = useState<ScheduledSessionView[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  const loadTodaySessions = useCallback(async () => {
+    if (!childId) return;
+    setSessionsLoading(true);
+    try {
+      const todayIso = new Date().toISOString().split('T')[0];
+      const sessions = await fetchSessions(childId, { from: todayIso, to: todayIso });
+      setTodaySessions(sessions.filter((s) => s.status === 'planned'));
+    } catch {
+      // non-critical — dashboard still works without today's sessions
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [childId]);
+
+  useEffect(() => { loadTodaySessions(); }, [loadTodaySessions]);
+
+  async function handleSessionAction(id: string, status: 'completed' | 'skipped') {
+    setTodaySessions((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await updateSessionStatus(id, status);
+    } catch {
+      loadTodaySessions();
+    }
+  }
+
+  // ── "Curriculum Gaps" — subjects with no topics or no tasks yet ──
+  const curriculumGaps = useMemo(() => {
+    return rawSubjects
+      .map((s) => {
+        const subjectTopics = rawTopics.filter((t) => t.subject_id === s.id);
+        const subjectTasks = rawTasks.filter((t) => subjectTopics.some((st) => st.id === t.topic_id));
+        return { id: s.id, name: s.name, topicsCount: subjectTopics.length, tasksCount: subjectTasks.length };
+      })
+      .filter((s) => s.topicsCount === 0 || s.tasksCount === 0)
+      .slice(0, 4);
+  }, [rawSubjects, rawTopics, rawTasks]);
 
   useEffect(() => {
     if (!childId) return;
@@ -154,6 +213,14 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* ── Greeting ──────────────────────────────────────────── */}
+      <div>
+        <p className="font-display text-2xl font-bold text-gray-900">{greeting()}, {user?.name ?? 'there'} 👋</p>
+        <p className="text-sm text-gray-400 mt-0.5">
+          {kids.length === 1 ? `Here's how ${kids[0].name} is doing.` : "Here's your homeschool at a glance."}
+        </p>
+      </div>
+
       {/* ── Summary Metrics Strip ────────────────────────────── */}
       {summaryLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
@@ -164,6 +231,58 @@ export function DashboardPage() {
       ) : summary ? (
         <DashboardSummaryWidgets summary={summary} />
       ) : null}
+
+      {/* ── Needs Attention Today ────────────────────────────── */}
+      {!sessionsLoading && (todaySessions.length > 0 || needsAttentionTasks.length > 0) && (
+        <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle size={18} className="text-accent-coral" />
+            <h2 className="font-display text-base font-bold text-gray-800">Needs Attention Today</h2>
+          </div>
+          <div className="space-y-2">
+            {todaySessions.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                <Calendar size={16} className="text-accent-pink flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{s.label}</p>
+                  <p className="text-xs text-gray-400">Scheduled for today</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleSessionAction(s.id, 'completed')}
+                    title="Mark completed"
+                    className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleSessionAction(s.id, 'skipped')}
+                    title="Skip"
+                    className="p-2 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors"
+                  >
+                    <SkipForward size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {needsAttentionTasks.map((task) => (
+              <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                <Clock size={16} className={task.isOverdue ? 'text-red-500 flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{task.name}</p>
+                  <p className="text-xs text-gray-400">{task.isOverdue ? 'Overdue' : 'Due today'}</p>
+                </div>
+                <button
+                  onClick={() => handleMarkPracticed(task)}
+                  className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent-pink/10 text-accent-pink hover:bg-accent-pink/20 transition-colors"
+                >
+                  Mark practiced
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Stats Grid ─────────────────────────────────────────── */}
       <StaggerContainer className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
@@ -264,6 +383,35 @@ export function DashboardPage() {
         )}
       </div>
 
+      {/* ── Curriculum Gaps ──────────────────────────────────── */}
+      {curriculumGaps.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles size={18} className="text-accent-teal" />
+            <h2 className="font-display text-base font-bold text-gray-800">Curriculum Gaps</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {curriculumGaps.map((gap) => (
+              <div key={gap.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{gap.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {gap.topicsCount === 0 ? 'No topics yet' : `${gap.tasksCount} task${gap.tasksCount === 1 ? '' : 's'} across ${gap.topicsCount} topic${gap.topicsCount === 1 ? '' : 's'}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push(`/subjects/${gap.id}/topics?ai=1`)}
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent-pink to-accent-coral text-white hover:opacity-90 transition-opacity"
+                >
+                  <Wand2 size={12} />
+                  Build with AI
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Recent Tasks ─────────────────────────────────────── */}
       {tasks.length > 0 && (
         <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
@@ -292,7 +440,7 @@ export function DashboardPage() {
                           ? 'bg-gray-100 text-gray-500'
                           : 'bg-violet-100 text-violet-700',
                     ].join(' ')}>
-                      {task.stage.replace(/_/g, ' ')}
+                      {masteryRung(task.stage as LearningStage).label}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
