@@ -7,10 +7,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
 import { supabase } from '../services/supabase';
+import { getCache, setCache, clearCache } from '../services/cacheService';
 import {
   avatarColor,
   colorToGradient,
@@ -127,30 +129,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error,         setError]         = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // We only set loading if we don't have data yet
+    if (rawChildren.length === 0) setLoading(true);
     setError(null);
 
     // ── Guard: only fetch when a Supabase session exists ──────
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      // User is not authenticated → AppRoutes will show LoginPage
       setLoading(false);
       return;
     }
 
+    // 1. Try to load from IndexedDB cache first for instant UI
+    try {
+      const cached = await getCache<any>('all_app_data');
+      if (cached && cached.children) {
+        setRawChildren(cached.children);
+        setRawSubjects(cached.subjects);
+        setRawTopics(cached.topics);
+        setRawTasks(cached.tasks);
+        setTaskProgress(cached.taskProgress);
+        setLoading(false); // Stop loading immediately!
+      }
+    } catch(err) {
+      console.warn("Failed to load from cache", err);
+    }
+
+    // 2. Fetch fresh data from Supabase in background
     try {
       const result = await fetchAllAppData();
+      
+      // Update state with fresh data
       setRawChildren(result.children);
       setRawSubjects(result.subjects);
       setRawTopics(result.topics);
       setRawTasks(result.tasks);
       setTaskProgress(result.taskProgress);
+      
+      // Update cache
+      await setCache('all_app_data', result);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load data from Supabase');
+      // Only set error if we don't have cached data to show
+      if (rawChildren.length === 0) {
+        setError(err instanceof Error ? err.message : 'Failed to load data from Supabase');
+      } else {
+        console.warn("Background fetch failed, but continuing to show cached data.");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [rawChildren.length]);
 
   // Re-fetch whenever the auth session changes (login / logout)
   useEffect(() => {
@@ -164,6 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setRawTopics([]);
           setRawTasks([]);
           setTaskProgress([]);
+          clearCache();
         }
       },
     );
@@ -172,7 +201,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ── Transform raw rows → app types ───────────────────────────
 
-  const kids: AppKid[] = rawChildren.map((child, i) => {
+  const kids: AppKid[] = useMemo(() => rawChildren.map((child, i) => {
     // For now, assume child has access to all subjects fetched (since fetchAllAppData fetches subjects the child is enrolled in)
     const childSubjects  = rawSubjects;
     const childProgress  = taskProgress.filter((p) => p.child_id === child.id);
@@ -195,8 +224,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       avatarInitials:   getInitials(child.name),
       avatarColor:      avatarColor(i),
       date_of_birth:    child.date_of_birth,
-      learningStyle:    'Mixed',
-      interests:        [],
+      learningStyle:    child.learning_style ?? 'Mixed',
+      interests:        child.interests ?? [],
       favoriteSubjects: childSubjects.slice(0, 2).map((s) => s.name),
       parentName:       'Parent',
       bio:              `${child.name} is enrolled in ${childSubjects.length} subject${childSubjects.length !== 1 ? 's' : ''}.`,
@@ -207,9 +236,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         achievements:        Math.floor(completedTasks / 3),
       },
     };
-  });
+  }), [rawChildren, rawSubjects, rawTopics, rawTasks, taskProgress]);
 
-  const subjects: AppSubject[] = rawSubjects.map((s) => {
+  const subjects: AppSubject[] = useMemo(() => rawSubjects.map((s) => {
     const subjectTopics = rawTopics.filter((t) => t.subject_id === s.id);
     const progress = computeSubjectProgress(s.id, rawTopics, rawTasks, taskProgress);
     return {
@@ -223,9 +252,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       topicsCount: subjectTopics.length,
       progress,
     };
-  });
+  }), [rawSubjects, rawTopics, rawTasks, taskProgress]);
 
-  const topics: AppTopic[] = rawTopics.map((t) => ({
+  const topics: AppTopic[] = useMemo(() => rawTopics.map((t) => ({
     id:          t.id,
     subjectId:   t.subject_id,
     title:       t.title,
@@ -233,9 +262,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     duration:    'Self-paced',
     difficulty:  normalizeDifficulty(t.difficulty_level),
     completed:   isTopicCompleted(t.id, rawTasks, taskProgress),
-  }));
+  })), [rawTopics, rawTasks, taskProgress]);
 
-  const tasks: AppTask[] = rawTasks.map((t) => {
+  const tasks: AppTask[] = useMemo(() => rawTasks.map((t) => {
     const prog = taskProgress.find((p) => p.task_id === t.id);
     return {
       id:          t.id,
@@ -246,26 +275,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       stage:       prog?.learning_stage ?? 'Not_Started',
       isScheduled: prog?.is_scheduled_this_week ?? false,
     };
-  });
+  }), [rawTasks, taskProgress]);
+
+  // Memoize the context value so consumers only re-render when data actually changes.
+  const value = useMemo<DataContextValue>(() => ({
+    kids,
+    subjects,
+    topics,
+    tasks,
+    taskProgress,
+    rawChildren,
+    rawSubjects,
+    rawTopics,
+    rawTasks,
+    loading,
+    error,
+    isEmpty: !loading && !error && rawChildren.length === 0,
+    refresh: load,
+  }), [kids, subjects, topics, tasks, taskProgress, rawChildren, rawSubjects, rawTopics, rawTasks, loading, error, load]);
 
   return (
-    <DataContext.Provider
-      value={{
-        kids,
-        subjects,
-        topics,
-        tasks,
-        taskProgress,
-        rawChildren,
-        rawSubjects,
-        rawTopics,
-        rawTasks,
-        loading,
-        error,
-        isEmpty: !loading && !error && rawChildren.length === 0,
-        refresh: load,
-      }}
-    >
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );

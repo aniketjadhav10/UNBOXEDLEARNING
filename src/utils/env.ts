@@ -1,5 +1,6 @@
 // ============================================================
 // utils/env.ts — Validated environment variable access
+// Updated for Next.js (uses process.env + NEXT_PUBLIC_ prefix)
 // ============================================================
 
 interface EnvConfig {
@@ -8,12 +9,13 @@ interface EnvConfig {
 }
 
 function validateEnv(): EnvConfig {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  // Next.js exposes NEXT_PUBLIC_* to the browser; also works server-side
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined;
 
   const missing: string[] = [];
-  if (!url)  missing.push('VITE_SUPABASE_URL');
-  if (!key)  missing.push('VITE_SUPABASE_ANON_KEY');
+  if (!url)  missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  if (!key)  missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
   if (missing.length > 0) {
     const msg = [
@@ -21,15 +23,14 @@ function validateEnv(): EnvConfig {
       ...missing.map((v) => `  • ${v}`),
       '',
       'Create a .env.local file in the project root with:',
-      '  VITE_SUPABASE_URL=https://your-project.supabase.co',
-      '  VITE_SUPABASE_ANON_KEY=your-anon-key',
+      '  NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co',
+      '  NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key',
     ].join('\n');
-    
-    // In development, throw to surface the problem immediately
-    if (import.meta.env.DEV) {
+
+    // Only throw in server-side contexts where process.env.NODE_ENV is defined
+    if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {
       throw new Error(msg);
     }
-    // In production, log and use empty strings (Supabase calls will 401 gracefully)
     console.error(msg);
   }
 

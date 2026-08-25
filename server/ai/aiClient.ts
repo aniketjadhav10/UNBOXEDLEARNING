@@ -2,6 +2,8 @@
  * Shared Gemini AI client and embedding utility for all AI API routes.
  */
 import { GoogleGenAI } from '@google/genai';
+import { withRetry } from '@/src/utils/retry';
+import { recordUsage, type GatewayCtx } from './gateway';
 
 // ---------------------------------------------------------------------------
 // Client singleton – re-used across all handlers in the same worker process
@@ -28,11 +30,14 @@ export const MERGE_SIMILARITY_THRESHOLD = 0.85;
  */
 export async function getEmbedding(text: string): Promise<number[] | null> {
   try {
-    const result = await ai.models.embedContent({
-      model: EMBEDDING_MODEL,
-      contents: text,
-      config: { outputDimensionality: EMBEDDING_DIMENSIONS },
-    });
+    const result = await withRetry(
+      () => ai.models.embedContent({
+        model: EMBEDDING_MODEL,
+        contents: text,
+        config: { outputDimensionality: EMBEDDING_DIMENSIONS },
+      }),
+      { attempts: 3, delayMs: 500 },
+    );
     const values = result.embeddings?.[0]?.values;
     if (!values) {
       console.warn('[getEmbedding] No values returned for text:', text.slice(0, 80));
@@ -52,16 +57,78 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
  * Call Gemini to generate JSON content from a prompt.
  * Throws if the model returns an empty response.
  */
-export async function generateJson(prompt: string): Promise<string> {
-  console.log(`[generateJson] Calling model "${MODEL_NAME}" …`);
-  const response = await ai.models.generateContent({
+export async function generateJson(
+  prompt: string,
+  meta?: { ctx?: GatewayCtx; operation?: string },
+): Promise<string> {
+  const start = Date.now();
+  const params = {
     model: MODEL_NAME,
     contents: prompt,
     config: { responseMimeType: 'application/json' },
-  });
-  const raw = response.text;
-  if (!raw) throw new Error('Gemini returned an empty response');
-  return raw;
+  };
+  try {
+    const response = await withRetry(() => ai.models.generateContent(params), { attempts: 3, delayMs: 800 });
+    const raw = response.text;
+    if (!raw) throw new Error('Gemini returned an empty response');
+    if (meta?.ctx) {
+      const u = response.usageMetadata;
+      await recordUsage(meta.ctx, {
+        operation: meta.operation ?? 'generate_json',
+        model: MODEL_NAME,
+        promptTokens: u?.promptTokenCount,
+        candidateTokens: u?.candidatesTokenCount,
+        totalTokens: u?.totalTokenCount,
+        latencyMs: Date.now() - start,
+        status: 'success',
+      });
+    }
+    return raw;
+  } catch (err: any) {
+    if (meta?.ctx) {
+      await recordUsage(meta.ctx, {
+        operation: meta?.operation ?? 'generate_json',
+        model: MODEL_NAME,
+        latencyMs: Date.now() - start,
+        status: 'error',
+        error: err?.message,
+      });
+    }
+    throw err;
+  }
+}
+
+type GenParams = Parameters<typeof ai.models.generateContent>[0];
+type GenResponse = Awaited<ReturnType<typeof ai.models.generateContent>>;
+
+/**
+ * Retry-wrapped, usage-logged Gemini content call for callers that hold a
+ * gateway context (e.g. the chat route). Mirrors ai.models.generateContent.
+ */
+export async function generateContentTracked(
+  ctx: GatewayCtx,
+  params: GenParams,
+  operation: string,
+): Promise<GenResponse> {
+  const start = Date.now();
+  const model = (params as any)?.model ?? MODEL_NAME;
+  try {
+    const response = await withRetry(() => ai.models.generateContent(params), { attempts: 3, delayMs: 800 });
+    const u = response.usageMetadata;
+    await recordUsage(ctx, {
+      operation,
+      model,
+      promptTokens: u?.promptTokenCount,
+      candidateTokens: u?.candidatesTokenCount,
+      totalTokens: u?.totalTokenCount,
+      latencyMs: Date.now() - start,
+      status: 'success',
+    });
+    return response;
+  } catch (err: any) {
+    await recordUsage(ctx, { operation, model, latencyMs: Date.now() - start, status: 'error', error: err?.message });
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -45,11 +45,11 @@ export function TaskScheduleModal({ isOpen, onClose, taskId, childId, onSaved }:
     try {
       const data = await getTaskProgress(taskId, childId);
       if (data) {
-        setProgress(data);
+        setProgress(data as unknown as SupabaseTaskProgress);
         setLearningStage(data.learning_stage || 'Not_Started');
         setTargetCount(data.target_count || 5);
         setRepeatInterval(data.repeat_interval || 1);
-        setInterestLevel(data.interest_level || 3);
+        setInterestLevel((Number(data.interest_level) || 3) as InterestLevel);
         setIsScheduled(data.is_scheduled_this_week || false);
       }
     } catch (err) {

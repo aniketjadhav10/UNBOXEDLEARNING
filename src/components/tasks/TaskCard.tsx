@@ -1,8 +1,5 @@
-// ============================================================
-// TaskCard — Main card component for a task with progress
-// ============================================================
-import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, Info } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, BookOpen, PenTool, Beaker, FileText, CheckSquare, MessageSquare, PlayCircle, Target, Info } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
 import { LearningStageBadge } from './LearningStageBadge';
@@ -21,7 +18,7 @@ interface TaskCardProps {
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
   topicName?: string;
-  expandableContent?: React.ReactNode;
+  expandableContent?: ReactNode;
 }
 
 function formatDate(iso?: string | null): string {
@@ -43,17 +40,28 @@ function formatLastPracticed(iso?: string | null): string {
   return `${diff}d ago`;
 }
 
-function getStageProgressData(stage: string | undefined | null) {
-  const normalized = stage || 'Not_Started';
-  switch(normalized) {
-    case 'Introduced': return { current: 1, total: 5, colorClass: 'bg-blue-400' };
-    case 'Practicing': return { current: 2, total: 5, colorClass: 'bg-violet-400' };
-    case 'Needs_Practice': return { current: 2, total: 5, colorClass: 'bg-red-400' };
-    case 'Comfortable': return { current: 4, total: 5, colorClass: 'bg-amber-400' };
-    case 'Confident': return { current: 5, total: 5, colorClass: 'bg-emerald-400' };
-    default: return { current: 0, total: 5, colorClass: 'bg-gray-200' };
+const getTaskTypeIcon = (type?: string) => {
+  switch (type) {
+    case 'reading': return <BookOpen size={14} className="text-blue-500" />;
+    case 'quiz': return <CheckSquare size={14} className="text-amber-500" />;
+    case 'project': return <PenTool size={14} className="text-rose-500" />;
+    case 'worksheet': return <FileText size={14} className="text-gray-500" />;
+    case 'experiment': return <Beaker size={14} className="text-emerald-500" />;
+    case 'discussion': return <MessageSquare size={14} className="text-fuchsia-500" />;
+    case 'lesson': default: return <PlayCircle size={14} className="text-violet-500" />;
   }
-}
+};
+
+const getStageGradient = (stage?: string | null) => {
+  switch(stage) {
+    case 'Introduced': return 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200';
+    case 'Practicing': return 'bg-gradient-to-br from-violet-50 to-violet-100/50 border-violet-200';
+    case 'Needs_Practice': return 'bg-gradient-to-br from-red-50 to-red-100/50 border-red-200';
+    case 'Comfortable': return 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200';
+    case 'Confident': return 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200';
+    default: return 'bg-white hover:bg-gray-50/50 border-gray-100';
+  }
+};
 
 export function TaskCard({
   task,
@@ -66,153 +74,109 @@ export function TaskCard({
   onToggleSchedule,
   subjectName,
   topicName,
-  expandableContent,
 }: TaskCardProps) {
   const { progress } = task;
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showDescPopover, setShowDescPopover] = useState(false);
-  const infoRef = useRef<HTMLButtonElement>(null);
 
-  // Determine overall card style based on stage and urgency
-  const isConfident = progress?.learning_stage === 'Confident';
-  const isNeedsPractice = progress?.learning_stage === 'Needs_Practice';
-  
   const bgStyle = task.isOverdue
-    ? 'bg-rose-50 border-rose-200'
-    : task.isDueToday
-    ? 'bg-blue-50 border-blue-200'
-    : isConfident
-    ? 'bg-emerald-50 border-emerald-200'
-    : isNeedsPractice
-    ? 'bg-amber-50 border-amber-200'
-    : 'bg-white border-gray-100 hover:bg-violet-50/30';
+    ? 'bg-gradient-to-br from-rose-50 to-red-50 border-rose-200'
+    : getStageGradient(progress?.learning_stage);
 
   const isScheduled = progress?.is_scheduled_this_week;
+  const hasDetails = task.materials_needed?.length || task.parent_guide || task.learning_objective;
 
   return (
-    <article
-      className={[
-        'group rounded-2xl border shadow-sm',
-        'hover:shadow-md hover:-translate-y-0.5 transition-all duration-300',
-        bgStyle,
-        'overflow-hidden flex flex-col relative',
-      ].join(' ')}
-    >
+    <article className={`group rounded-3xl border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 ${bgStyle} overflow-hidden flex flex-col relative`}>
+      
       {/* ── TOP SECTION ─────────────────────────────────────── */}
-      <div className="p-4 pb-2 flex gap-3">
+      <div className="p-5 pb-3 flex gap-4">
         {/* Progress ring */}
-        <div className="flex-shrink-0">
-          <TaskProgressRing percent={task.progressPercent} size={44} />
+        <div className="flex-shrink-0 mt-1">
+          <TaskProgressRing percent={task.progressPercent} size={48} />
         </div>
 
         {/* Details Column */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          {/* Row 1: Title & Info */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          {/* Row 1: Title & Badges */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold text-gray-900 text-sm leading-tight flex-1 line-clamp-2">
+            <h3 className="font-bold text-gray-900 text-base leading-tight flex-1 line-clamp-2">
               {task.name}
             </h3>
-            
-            <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-              {task.description && (
-                <div className="relative">
-                  <button
-                    ref={infoRef}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDescPopover((v) => !v);
-                    }}
-                    className="p-0.5 text-gray-400 hover:text-violet-500 transition-colors rounded"
-                    aria-label="Show task description"
-                  >
-                    <Info size={14} />
-                  </button>
-                  {showDescPopover && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-30"
-                        onClick={() => setShowDescPopover(false)}
-                        aria-hidden="true"
-                      />
-                      <div className="absolute right-0 top-6 z-40 w-64 bg-gray-900 text-white text-xs rounded-xl shadow-xl p-3 leading-relaxed animate-fade-in">
-                        <p className="font-semibold text-violet-300 mb-1 text-[10px] uppercase tracking-wider">Description</p>
-                        <p>{task.description}</p>
-                        <div className="absolute -top-1.5 right-2 w-3 h-3 bg-gray-900 rotate-45" />
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            {task.is_assessment && (
+              <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md border border-rose-200">
+                Assessment
+              </span>
+            )}
           </div>
 
-          {/* Row 2: Subject/Topic & Scheduled Badge */}
-          <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 font-medium">
+          {/* Row 2: Type, Time, Subject/Topic */}
+          <div className="flex items-center gap-3 flex-wrap text-xs font-medium">
+            <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded-lg border border-gray-200/50">
+              {getTaskTypeIcon(task.task_type)}
+              <span className="capitalize text-gray-700">{task.task_type || 'Lesson'}</span>
+            </div>
+            
+            {task.estimated_minutes && (
+              <div className="flex items-center gap-1 text-gray-500 bg-white/60 px-2 py-1 rounded-lg border border-gray-200/50">
+                <Clock size={12} className="text-blue-500" />
+                {task.estimated_minutes} min
+              </div>
+            )}
+            
             {(subjectName || topicName) && (
-              <span className="truncate max-w-[150px]">
+              <span className="text-gray-400 truncate max-w-[150px]">
                 {subjectName} {subjectName && topicName && ' › '} {topicName}
               </span>
             )}
-            {isScheduled && (
-              <span className="text-[10px] font-bold text-violet-700 bg-violet-100/70 px-1.5 py-0.5 rounded border border-violet-200">
-                📅 This week
-              </span>
-            )}
           </div>
 
-          {/* Row 3: Badges */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+          <p className="text-gray-500 text-sm line-clamp-2 mt-1">
+            {task.description}
+          </p>
+
+          {/* Row 3: Interactive Badges */}
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} size="sm" />
-            <InterestLevelIndicator
-              level={(progress?.interest_level ?? 3) as InterestLevel}
-              interactive
-              onSelect={(l) => onUpdateInterest(task, l)}
-              size="sm"
-            />
+            <InterestLevelIndicator level={(progress?.interest_level ?? 3) as InterestLevel} interactive onSelect={(l) => onUpdateInterest(task, l)} size="sm" />
             <SmartIndicators task={task} />
+            {isScheduled && (
+              <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-2 py-1 rounded-md border border-violet-200 ml-auto">
+                📅 Scheduled
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {/* ── MIDDLE SECTION ──────────────────────────────────── */}
-      <div className="px-4 pb-2 flex-1">
-        {/* Progress bar and Date row condensed */}
-        <div className="flex flex-col gap-2">
-          <div className="w-full flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-700 w-10 text-right">{task.progressPercent}%</span>
-            <div className="flex-1 h-2 bg-gray-200/50 rounded-full overflow-hidden">
+      <div className="px-5 pb-3 flex-1">
+        <div className="flex flex-col gap-3">
+          <div className="w-full flex items-center gap-3">
+            <span className="text-xs font-bold text-gray-700 w-8 text-right">{task.progressPercent}%</span>
+            <div className="flex-1 h-2.5 bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
               <div
-                className={[
-                  'h-full rounded-full transition-all duration-700 ease-out',
-                  task.progressPercent >= 80 ? 'bg-emerald-500' : task.progressPercent >= 50 ? 'bg-violet-500' : task.progressPercent >= 25 ? 'bg-amber-500' : 'bg-rose-500',
-                ].join(' ')}
+                className={`h-full rounded-full transition-all duration-700 ease-out ${task.progressPercent >= 80 ? 'bg-emerald-500' : task.progressPercent >= 50 ? 'bg-violet-500' : task.progressPercent >= 25 ? 'bg-amber-500' : 'bg-rose-500'}`}
                 style={{ width: `${task.progressPercent}%` }}
               />
             </div>
-            <span className="text-[10px] font-medium text-gray-500 flex items-center gap-0.5 whitespace-nowrap">
-              <TrendingUp size={10} />
+            <span className="text-xs font-bold text-gray-500 flex items-center gap-1 whitespace-nowrap bg-white/50 px-2 py-0.5 rounded-md">
+              <TrendingUp size={12} />
               {progress?.learned_count ?? 0}/{progress?.target_count ?? 5}
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium bg-white/40 px-2 py-1 rounded-lg">
-            <span className="flex items-center gap-1">
-              <Clock size={10} /> {formatLastPracticed(progress?.last_practiced_at)}
-            </span>
+          <div className="flex items-center justify-between text-xs text-gray-600 font-medium bg-white/60 px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+            <span className="flex items-center gap-1.5"><Clock size={12} className="text-gray-400" /> {formatLastPracticed(progress?.last_practiced_at)}</span>
             <span className={task.isOverdue ? 'text-rose-600 font-bold' : task.isDueToday ? 'text-blue-600 font-bold' : ''}>
-              <Calendar size={10} className="inline mr-1" />
-              Due: {formatDate(progress?.next_due_at)}
+              <Calendar size={12} className="inline mr-1 text-gray-400" /> Due: {formatDate(progress?.next_due_at)}
             </span>
-            <span className="flex items-center gap-1">
-              <Repeat size={10} /> {progress?.repeat_interval ? `${progress.repeat_interval}d` : '—'}
-            </span>
+            <span className="flex items-center gap-1.5"><Repeat size={12} className="text-gray-400" /> {progress?.repeat_interval ? `${progress.repeat_interval}d` : '—'}</span>
           </div>
         </div>
       </div>
 
-      {/* ── BOTTOM SECTION — Actions ─────────────────────────── */}
-      <div className="px-4 pb-3 mt-auto">
+      {/* ── ACTIONS ─────────────────────────────────────────── */}
+      <div className="px-5 pb-4 mt-auto">
         <TaskQuickActions
           task={task}
           onMarkPracticed={onMarkPracticed}
@@ -224,63 +188,71 @@ export function TaskCard({
         />
       </div>
 
-      {/* ── Bottom Segmented Progress Bar ── */}
-      <div className="flex h-1.5 w-full gap-0.5 mt-auto bg-gray-100/50">
-        {Array.from({ length: 5 }).map((_, i) => {
-          const progData = getStageProgressData(progress?.learning_stage);
-          return (
-            <div
-              key={i}
-              className={`h-full flex-1 transition-colors ${
-                i < progData.current ? progData.colorClass : 'bg-transparent'
-              }`}
-            />
-          );
-        })}
-      </div>
+      {/* ── EXPANDABLE DRAWER ─────────────────────────────────── */}
+      {hasDetails && (
+        <div className="border-t border-gray-200/50 bg-white/40">
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+            className="w-full flex items-center justify-center py-2 text-gray-400 hover:text-violet-600 hover:bg-white/60 transition-colors"
+          >
+            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+          
+          {isExpanded && (
+            <div className="px-5 pb-5 pt-2 animate-fade-in space-y-4" onClick={(e) => e.stopPropagation()}>
+              {/* Learning Objective */}
+              {task.learning_objective && (
+                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                  <h4 className="text-xs font-bold text-blue-800 flex items-center gap-1.5 mb-1"><Target size={14} /> Objective</h4>
+                  <p className="text-xs text-blue-900/80 leading-relaxed">{task.learning_objective}</p>
+                </div>
+              )}
+              
+              {/* Materials */}
+              {task.materials_needed && task.materials_needed.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-gray-700 mb-1.5 ml-1">Materials Needed</h4>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {task.materials_needed.map((item, idx) => (
+                      <li key={idx} className="text-[10px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md border border-gray-200 font-medium">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-      {/* ── Expand Button ── */}
-      {expandableContent && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
-          className="w-full flex items-center justify-center py-1.5 bg-gray-50/50 hover:bg-violet-50/50 text-gray-400 hover:text-violet-600 border-t border-gray-50 transition-colors"
-        >
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-      )}
-
-      {/* ── Expanded Content ── */}
-      {expandableContent && isExpanded && (
-        <div className="px-4 py-3 border-t border-gray-50 bg-gray-50/30 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-          {expandableContent}
+              {/* Parent Guide */}
+              {task.parent_guide && (
+                <div className="bg-violet-50 p-4 rounded-xl border border-violet-100 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-2 opacity-10"><Info size={40} /></div>
+                  <h4 className="text-xs font-bold text-violet-900 mb-1.5 uppercase tracking-wider">Parent Guide</h4>
+                  <p className="text-xs text-violet-800/80 leading-relaxed relative z-10">{task.parent_guide}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </article>
   );
 }
 
-// ── Skeleton loader variant ──────────────────────────────────
 export function TaskCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-4 space-y-3 animate-pulse">
-      <div className="flex items-start gap-3">
-        <div className="w-14 h-14 rounded-full bg-gray-100 flex-shrink-0" />
-        <div className="flex-1 space-y-2 pt-1">
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-card p-5 space-y-4 animate-pulse">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0" />
+        <div className="flex-1 space-y-3 pt-1">
           <div className="h-4 bg-gray-100 rounded-full w-3/4" />
-          <div className="h-3 bg-gray-100 rounded-full w-1/2" />
-          <div className="flex gap-2">
-            <div className="h-5 bg-gray-100 rounded-full w-24" />
-            <div className="h-5 bg-gray-100 rounded-full w-16" />
-          </div>
+          <div className="flex gap-2"><div className="h-6 bg-gray-100 rounded-lg w-20" /><div className="h-6 bg-gray-100 rounded-lg w-16" /></div>
+          <div className="h-3 bg-gray-100 rounded-full w-full" />
+          <div className="h-3 bg-gray-100 rounded-full w-2/3" />
         </div>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full" />
-      <div className="flex gap-2">
-        <div className="h-7 bg-gray-100 rounded-lg w-20" />
-        <div className="h-7 bg-gray-100 rounded-lg w-16" />
+      <div className="h-2.5 bg-gray-100 rounded-full w-full mt-4" />
+      <div className="flex justify-between mt-4">
+        <div className="h-8 bg-gray-100 rounded-lg w-1/4" /><div className="h-8 bg-gray-100 rounded-lg w-1/4" /><div className="h-8 bg-gray-100 rounded-lg w-1/4" />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { LearningTask, Lesson } from '../types';
+import type { LearningTask } from '../types';
 import { supabase } from './supabase';
 
 export async function request<T>(url: string, options: RequestInit): Promise<T> {
@@ -24,13 +24,6 @@ export async function request<T>(url: string, options: RequestInit): Promise<T> 
 }
 
 export const api = {
-  generateLesson(topic: string) {
-    return request<{ lesson: Lesson }>('/api/ai/generateLesson', {
-      method: 'POST',
-      body: JSON.stringify({ topic }),
-    });
-  },
-
   createTask(task: Omit<LearningTask, 'id' | 'updatedAt'>) {
     return request<{ task: LearningTask }>('/api/tasks/create', {
       method: 'POST',

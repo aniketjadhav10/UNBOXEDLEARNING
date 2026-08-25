@@ -29,7 +29,7 @@ export const chatService = {
       console.error('Error fetching chat sessions:', error);
       throw error;
     }
-    return data || [];
+    return (data ?? []) as ChatSession[];
   },
 
   /** Create a new chat session */
@@ -47,7 +47,7 @@ export const chatService = {
       console.error('Error creating chat session:', error);
       throw error;
     }
-    return data;
+    return data as ChatSession;
   },
 
   /** Update session title */
@@ -92,7 +92,7 @@ export const chatService = {
       console.error('Error fetching messages:', error);
       throw error;
     }
-    return data || [];
+    return (data ?? []) as ChatMessage[];
   },
 
   /** Send a message to the AI and save it */

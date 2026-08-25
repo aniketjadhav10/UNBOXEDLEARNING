@@ -1,195 +1,123 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { allowMethods, readString, sendError } from '../../src/lib/api-utils/http';
-import { createServerSupabase } from '../../src/lib/api-utils/supabase';
-import { generateJson, requireGeminiKey } from './aiClient';
-import { findOrCreateSubject, findOrCreateTopic, findOrCreateTask, insertTaskProgress, enrollChildInSubject, enrollChildInTopic, syncActivities } from './aiDb';
-import type { MergeAction } from './aiDb';
-import { buildSyllabusPrompt } from './prompts/SyllabusPrompt';
-import { logger } from '../logger';
+// ============================================================
+// generateSyllabus — the Director → SME assembly that turns source text into a
+// full curriculum draft (subject → topics → skills → prerequisites → objectives
+// → tasks). Shared by the interactive generator route and the batch global
+// library builder. Persistence lives in persistSyllabus.ts.
+// ============================================================
+import { generateJson } from './aiClient';
+import type { GatewayCtx } from './gateway';
+import { buildDirectorPrompt } from './agents/directorAgent';
+import { buildSmePrompt } from './agents/smeAgent';
+import type { SyllabusDraft } from './persistSyllabus';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-interface SyllabusResult {
-  subject: { name: string; description: string };
-  topics: Array<{
-    title: string;
-    description: string;
-    difficulty_level: string;
-    age_group: string;
-    learning_objectives?: string[];
-    estimated_hours?: number;
-    bloom_level?: string;
-    keywords?: string[];
-    tasks: Array<{
-      title: string;
-      description: string;
-      task_type?: string;
-      instructions?: string;
-      parent_guide?: string;
-      materials_needed?: string[];
-      estimated_minutes?: number;
-      learning_objective?: string;
-      assessment_criteria?: string;
-      resources?: Array<{ type: string; url: string; title: string }>;
-      activities?: Array<{
-        name: string;
-        activity_type?: string;
-        instructions?: string;
-        materials?: string[];
-      }>;
-    }>;
-  }>;
-}
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-interface ActionSummary {
-  created: number;
-  merged: number;
-  unchanged: number;
-}
-
-function emptySummary(): ActionSummary {
-  return { created: 0, merged: 0, unchanged: 0 };
-}
-
-function tally(summary: ActionSummary, action: MergeAction): void {
-  summary[action]++;
-}
-
-// ---------------------------------------------------------------------------
-// Handler
-// ---------------------------------------------------------------------------
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (!allowMethods(req, res, ['POST'])) return;
+/** Extract the first JSON object from a model response, trimming code fences and
+ *  recovering from a truncated tail. */
+export function extractJson(text: string): any {
+  let clean = text;
+  if (clean.includes('```json')) {
+    clean = clean.split('```json')[1].split('```')[0];
+  } else if (clean.includes('```')) {
+    const parts = clean.split('```');
+    if (parts.length >= 3) clean = parts[1];
+  }
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('No JSON object found in response.');
 
   try {
-    requireGeminiKey();
-
-    const sourceText    = readString(req.body?.sourceText, 'sourceText');
-    const age           = Number(req.body?.age)           || 10;
-    const topicsCount   = Number(req.body?.topicsCount)   || 5;
-    const tasksPerTopic = Number(req.body?.tasksPerTopic) || 3;
-    const childId       = req.body?.childId ? String(req.body.childId) : null;
-    const skillLevel    = req.body?.skillLevel ? String(req.body.skillLevel) : 'Beginner';
-    const targetGrade   = req.body?.targetGrade ? String(req.body.targetGrade) : null;
-    const isGlobal      = req.body?.isGlobal === true;
-
-    logger.info(`[generateSyllabus] age=${age} skill=${skillLevel} grade=${targetGrade} isGlobal=${isGlobal} topics=${topicsCount}`);
-
-    // 1. Generate syllabus JSON from AI
-    const prompt = buildSyllabusPrompt({ sourceText, age, skillLevel, targetGrade, topicsCount, tasksPerTopic });
-    const raw    = await generateJson(prompt);
-    
-    // Sometimes the model appends trailing whitespace or markdown (e.g. ```) even with application/json
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Could not find a JSON object in the AI response.");
-    
-    const result = JSON.parse(match[0]) as SyllabusResult;
-
-    logger.info(`[generateSyllabus] Parsed subject: "${result.subject.name}" with ${result.topics.length} topics`);
-
-    const supabase = createServerSupabase(req);
-
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const subjectSummary = emptySummary();
-    const topicSummary   = emptySummary();
-    const taskSummary    = emptySummary();
-
-    // 2. Resolve, merge, or create subject
-    const subjectResult = await findOrCreateSubject(supabase, {
-      name: result.subject.name,
-      description: result.subject.description,
-      childId: childId,
-      userId: user.id,
-      is_global: isGlobal,
-    });
-    tally(subjectSummary, subjectResult.action);
-    const subjectId = subjectResult.id;
-
-    if (childId) {
-      await enrollChildInSubject(supabase, childId, subjectId);
-    }
-
-    // 3. Process topics and tasks
-    let topicOrderIndex = 0;
-    for (const t of result.topics) {
-      const topicResult = await findOrCreateTopic(supabase, {
-        subjectId,
-        title: t.title,
-        description: t.description,
-        difficultyLevel: t.difficulty_level || 'Beginner',
-        ageGroup: String(age),
-        orderIndex: topicOrderIndex++,
-        learningObjectives: t.learning_objectives,
-        estimatedHours: t.estimated_hours,
-        bloomLevel: t.bloom_level,
-        keywords: t.keywords,
-      });
-      tally(topicSummary, topicResult.action);
-
-      if (childId) {
-        await enrollChildInTopic(supabase, childId, topicResult.id);
-      }
-
-      let taskOrderIndex = 0;
-      for (const task of t.tasks) {
-        const taskResult = await findOrCreateTask(supabase, {
-          topicId: topicResult.id,
-          name: task.title,
-          description: task.description,
-          orderIndex: taskOrderIndex++,
-          taskType: task.task_type,
-          instructions: task.instructions,
-          parentGuide: task.parent_guide,
-          materialsNeeded: task.materials_needed,
-          estimatedMinutes: task.estimated_minutes,
-          learningObjective: task.learning_objective,
-          assessmentCriteria: task.assessment_criteria,
-          resources: task.resources,
-        });
-        tally(taskSummary, taskResult.action);
-
-        if (taskResult.isNew && childId) {
-          await insertTaskProgress(supabase, { taskId: taskResult.id, childId });
-        }
-
-        // Sync Activities
-        if (task.activities && task.activities.length > 0) {
-          await syncActivities(supabase, taskResult.id, task.activities);
-        }
+    return JSON.parse(match[0]);
+  } catch (err) {
+    let str = match[0];
+    while (str.lastIndexOf('}') > 0) {
+      try { return JSON.parse(str); }
+      catch {
+        str = str.substring(0, str.lastIndexOf('}'));
+        const nextBrace = str.lastIndexOf('}');
+        if (nextBrace === -1) break;
+        str = str.substring(0, nextBrace + 1);
       }
     }
-
-    const summary = { subjects: subjectSummary, topics: topicSummary, tasks: taskSummary };
-    logger.info({ summary, subjectId }, `[generateSyllabus] Done.`);
-
-    res.status(200).json({
-      success: true,
-      subjectId,
-      summary,
-      message: buildMessage(summary),
-    });
-  } catch (error: any) {
-    logger.error({ err: error, message: error.message, stack: error.stack }, '[generateSyllabus] Error details');
-    sendError(res, error, 500);
+    throw err;
   }
 }
 
-function buildMessage(summary: { subjects: ActionSummary; topics: ActionSummary; tasks: ActionSummary }): string {
-  const parts: string[] = [];
-  const { topics, tasks } = summary;
+export interface AssembleParams {
+  sourceText: string;
+  age: number;
+  skillLevel: string;
+  targetGrade: string | null;
+  topicsCount: number;
+  tasksPerTopic: number;
+  interests: string[];
+  ctx: GatewayCtx;
+  /** optional progress callback (for SSE streaming) */
+  onEvent?: (e: Record<string, unknown>) => Promise<void> | void;
+}
 
-  if (topics.created > 0) parts.push(`${topics.created} topic${topics.created !== 1 ? 's' : ''} added`);
-  if (topics.merged   > 0) parts.push(`${topics.merged} topic${topics.merged !== 1 ? 's' : ''} enriched`);
-  if (tasks.created   > 0) parts.push(`${tasks.created} task${tasks.created !== 1 ? 's' : ''} added`);
-  if (tasks.merged    > 0) parts.push(`${tasks.merged} task${tasks.merged !== 1 ? 's' : ''} enriched`);
+/**
+ * Run the Director agent (subject + topic outline) then the SME agents in
+ * parallel (each topic → skill tree + tasks), and assemble the full draft.
+ * Persists nothing — the caller decides (preview vs. save vs. global).
+ */
+export async function assembleSyllabusDraft(p: AssembleParams): Promise<SyllabusDraft> {
+  const emit = async (e: Record<string, unknown>) => { await p.onEvent?.(e); };
 
-  return parts.length > 0
-    ? `Syllabus ready — ${parts.join(', ')}.`
-    : 'Syllabus is already up to date.';
+  // STEP 1: Director — subject + topics
+  await emit({ status: 'planning', message: 'Director Agent: planning curriculum structure…' });
+  const directorRaw = await generateJson(
+    buildDirectorPrompt({
+      sourceText: p.sourceText, age: p.age, skillLevel: p.skillLevel,
+      targetGrade: p.targetGrade, topicsCount: p.topicsCount, interests: p.interests,
+    }),
+    { ctx: p.ctx, operation: 'generate_syllabus' },
+  );
+  const directorData = extractJson(directorRaw);
+  const allTopics: any[] = directorData.topics ?? [];
+
+  // STEP 2: chunk topics for parallel SME expansion (max 5 batches)
+  const maxChunks = 5;
+  const chunkSize = Math.max(Math.ceil(allTopics.length / maxChunks), 2);
+  const topicChunks: any[][] = [];
+  for (let i = 0; i < allTopics.length; i += chunkSize) {
+    topicChunks.push(allTopics.slice(i, i + chunkSize));
+  }
+  await emit({ status: 'chunking', message: `Expanding ${allTopics.length} topics in ${topicChunks.length} batches…` });
+
+  // STEP 3: SME (parallel) — each topic → skills + tasks
+  const chunkResults = await Promise.all(topicChunks.map(async (chunk, idx) => {
+    await emit({ status: 'writing', message: `SME Agent: batch ${idx + 1}/${topicChunks.length}…` });
+    const smeRaw = await generateJson(
+      buildSmePrompt({ topics: chunk, age: p.age, skillLevel: p.skillLevel, tasksPerTopic: p.tasksPerTopic, interests: p.interests }),
+      { ctx: p.ctx, operation: 'generate_syllabus' },
+    );
+    const smeData = extractJson(smeRaw);
+
+    return (smeData.topics ?? []).map((t: any) => {
+      const dt = chunk.find((d: any) => d.title === t.title) || chunk[0] || {};
+      return {
+        title: t.title,
+        description: dt.description || t.description || '',
+        difficulty_level: dt.difficulty_level || 'Beginner',
+        age_group: String(p.age),
+        learning_objectives: dt.learning_objectives || [],
+        estimated_hours: dt.estimated_hours || 1,
+        bloom_level: dt.bloom_level || 'Apply',
+        keywords: dt.keywords || [],
+        skills: (Array.isArray(t.skills) && t.skills.length > 0)
+          ? t.skills
+          : [{
+              name: t.title,
+              description: dt.description || t.description || '',
+              level: 1,
+              difficulty: dt.difficulty_level || 'Beginner',
+              learning_objectives: dt.learning_objectives || [],
+              prerequisites: [],
+              tasks: t.tasks || [],
+            }],
+      };
+    });
+  }));
+
+  return { subject: directorData.subject, topics: chunkResults.flat() };
 }

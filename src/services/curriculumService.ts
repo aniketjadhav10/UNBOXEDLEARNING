@@ -14,8 +14,17 @@ import type {
   DbTopicWithBreadcrumb,
   EnrollmentSource,
 } from '../types/database';
+import { cachedQuery, delByPrefix, delCache } from './cacheService';
 
 export type CurriculumLevel = 'subjects' | 'topics' | 'tasks' | 'activities' | 'children';
+
+/** Invalidate all cached curriculum reads (subjects/topics/tasks/domains). */
+async function invalidateCurriculum(): Promise<void> {
+  await delByPrefix('subjects');
+  await delByPrefix('topics');
+  await delByPrefix('topic-tasks');
+  await delCache('domains:subjects');
+}
 
 // ── Generic CRUD handlers ────────────────────────────────────
 
@@ -26,6 +35,7 @@ export async function createItem<T>(table: CurriculumLevel, payload: any): Promi
     .select('*')
     .single();
   if (error) throw error;
+  await invalidateCurriculum();
   return data as T;
 }
 
@@ -37,6 +47,7 @@ export async function updateItem<T>(table: CurriculumLevel, id: string, payload:
     .select('*')
     .single();
   if (error) throw error;
+  await invalidateCurriculum();
   return data as T;
 }
 
@@ -47,6 +58,7 @@ export async function deleteItem(table: CurriculumLevel, id: string): Promise<vo
     .update({ is_active: false })
     .eq('id', id);
   if (error) throw error;
+  await invalidateCurriculum();
 }
 
 // ── Global Library Fetchers ──────────────────────────────────
@@ -61,6 +73,28 @@ export async function fetchAllSubjectsFromLibrary(): Promise<DbSubject[]> {
     .order('order_index', { ascending: true });
   if (error) throw error;
   return data as DbSubject[];
+}
+
+/** Fetch the current user's private (not-yet-shared) subjects — the curation queue. */
+export async function fetchMyPrivateSubjects(): Promise<DbSubject[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('subjects')
+    .select('*')
+    .eq('is_active', true)
+    .eq('is_global', false)
+    .eq('created_by', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as DbSubject[];
+}
+
+/** Promote a private subject into the shared global library (curation action). */
+export async function promoteSubjectToLibrary(id: string): Promise<void> {
+  const { error } = await supabase.from('subjects').update({ is_global: true }).eq('id', id);
+  if (error) throw error;
+  await invalidateCurriculum();
 }
 
 /** Fetch only subjects that a specific child is enrolled in */
@@ -170,14 +204,16 @@ export async function fetchTopicsWithBreadcrumb(childId: string): Promise<DbTopi
 }
 
 export async function fetchTasksByTopic(topicId: string): Promise<DbTask[]> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('topic_id', topicId)
-    .eq('is_active', true)
-    .order('order_index', { ascending: true });
-  if (error) throw error;
-  return data as DbTask[];
+  return cachedQuery(`topic-tasks:${topicId}`, async () => {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('topic_id', topicId)
+      .eq('is_active', true)
+      .order('order_index', { ascending: true });
+    if (error) throw error;
+    return data as unknown as DbTask[];
+  });
 }
 
 export async function fetchTaskById(id: string): Promise<DbTask | null> {
@@ -267,7 +303,7 @@ export async function enrollInSubject(childId: string, subjectId: string): Promi
       const taskProgressData = tasks.map(t => ({
         task_id: t.id,
         child_id: childId,
-        learning_stage: 'Not_Started',
+        learning_stage: 'Not_Started' as const,
         learned_count: 0,
         target_count: 5,
         repeat_interval: 1,
@@ -309,7 +345,7 @@ export async function enrollInTopic(
     const taskProgressData = tasks.map(t => ({
       task_id: t.id,
       child_id: childId,
-      learning_stage: 'Not_Started',
+      learning_stage: 'Not_Started' as const,
       learned_count: 0,
       target_count: 5,
       repeat_interval: 1,

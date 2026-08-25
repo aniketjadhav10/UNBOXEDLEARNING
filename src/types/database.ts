@@ -31,6 +31,8 @@ export interface DbChild {
   name: string;
   grade_level: string;
   date_of_birth: string | null;
+  interests: string[];
+  learning_style: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +57,68 @@ export interface DbChildTopic {
   enrollment_source: EnrollmentSource;
   custom_order: number;
   target_completion_date: string | null;
+}
+
+// ── Lesson planning / scheduling ─────────────────────────────
+export type SessionStatus = 'planned' | 'in_progress' | 'completed' | 'skipped';
+
+export interface DbLessonPlan {
+  id: string;
+  child_id: string;
+  title: string;
+  week_start_date: string | null;
+  status: 'active' | 'archived';
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbScheduledSession {
+  id: string;
+  plan_id: string | null;
+  child_id: string;
+  task_id: string | null;
+  topic_id: string | null;
+  scheduled_date: string;
+  start_time: string | null;
+  duration_minutes: number | null;
+  status: SessionStatus;
+  notes: string | null;
+  completed_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Assessment / submissions ─────────────────────────────────
+export type SubmissionStatus = 'submitted' | 'grading' | 'graded' | 'returned';
+
+export interface DbSubmission {
+  id: string;
+  child_id: string;
+  task_id: string;
+  session_id: string | null;
+  content: string | null;
+  attachment_url: string | null;
+  status: SubmissionStatus;
+  submitted_by: string | null;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbAssessmentResult {
+  id: string;
+  submission_id: string;
+  score: number | null;
+  max_score: number;
+  passed: boolean | null;
+  feedback: string | null;
+  rubric: unknown;
+  graded_by: 'ai' | 'parent';
+  grader_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ── Global Content Tables ────────────────────────────────────
@@ -152,8 +216,7 @@ export interface DbActivity {
   task_id: string;
   name: string;
   type: string | null;
-  materials: string | null;
-  duration_minutes: number | null;
+  materials: string[] | null;
   order_index: number;
   is_active: boolean;
   // New fields (Phase 1)

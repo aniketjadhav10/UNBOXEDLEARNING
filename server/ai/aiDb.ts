@@ -14,6 +14,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getEmbedding, SIMILARITY_THRESHOLD } from './aiClient';
 import { logger } from '../logger';
 
+/** Valid 360° development domains (keep in sync with subjects.development_domain). */
+const VALID_DOMAINS = ['academic', 'social_emotional', 'physical', 'creative', 'life_skills', 'character', 'digital'];
+function normalizeDomain(d?: string): string {
+  return d && VALID_DOMAINS.includes(d) ? d : 'academic';
+}
+
 // ---------------------------------------------------------------------------
 // Shared result type
 // ---------------------------------------------------------------------------
@@ -39,6 +45,7 @@ export interface SubjectInput {
   userId: string;
   ageGroup?: string;
   is_global?: boolean;
+  developmentDomain?: string;
 }
 
 export interface TopicInput {
@@ -56,6 +63,7 @@ export interface TopicInput {
 
 export interface TaskInput {
   topicId: string;
+  skillId?: string | null;
   name: string;
   description: string;
   orderIndex: number;
@@ -168,6 +176,7 @@ export async function findOrCreateSubject(
       created_by: input.userId,
       is_global: input.is_global ?? false,
       is_active: true,
+      development_domain: normalizeDomain(input.developmentDomain),
       embedding,
     })
     .select()
@@ -335,6 +344,7 @@ export async function findOrCreateTask(
     .from('tasks')
     .insert({
       topic_id: input.topicId,
+      skill_id: input.skillId ?? null,
       name: input.name,
       description: input.description,
       source_type: 'ai_generated',
@@ -379,6 +389,172 @@ async function mergeTask(
   }, ['description', 'task_type', 'instructions', 'parent_guide', 'materials_needed', 'estimated_minutes', 'learning_objective', 'assessment_criteria', 'resources', 'embedding']);
   const patched = await applyPatch(supabase, 'tasks', id, patch, 'findOrCreateTask');
   return { id, action: patched ? 'merged' : 'unchanged' };
+}
+
+// ---------------------------------------------------------------------------
+// Skill (roadmap layer)
+// ---------------------------------------------------------------------------
+export interface SkillInput {
+  topicId: string;
+  subjectId: string;
+  name: string;
+  description: string;
+  level?: number;
+  difficulty?: string;
+  ageMin?: number;
+  ageMax?: number;
+  masteryCriteria?: string;
+  developmentDomain?: string;
+  isGlobal?: boolean;
+  createdBy: string;
+}
+
+/**
+ * Find an existing skill under the given topic by vector similarity (or exact
+ * name fallback). Enrich null/empty fields on match. Insert if not found.
+ * Mirrors findOrCreateTask so generation reuses skills instead of duplicating.
+ */
+export async function findOrCreateSkill(
+  supabase: SupabaseClient,
+  input: SkillInput,
+): Promise<MergeResult> {
+  const text = `${input.name} ${input.description || ''}`.trim();
+  const embedding = await getEmbedding(text);
+
+  // ── 1. Vector similarity search (scoped to the topic) ───────
+  if (embedding) {
+    const { data: matches, error } = await supabase.rpc('match_skills', {
+      query_embedding: embedding,
+      topic_id_filter: input.topicId,
+      match_threshold: SIMILARITY_THRESHOLD,
+      match_count: 1,
+    });
+    if (error) logger.warn(`[findOrCreateSkill] RPC error: ${error.message}`);
+
+    if (matches && matches.length > 0) {
+      const id = matches[0].id as string;
+      logger.info(`[findOrCreateSkill] Vector match: "${matches[0].name}" (id: ${id})`);
+      return mergeSkill(supabase, id, input, embedding);
+    }
+  }
+
+  // ── 2. Exact name fallback ───────────────────────────────────
+  const { data: exact } = await supabase
+    .from('skills')
+    .select('id, description, embedding')
+    .eq('topic_id', input.topicId)
+    .ilike('name', input.name)
+    .maybeSingle();
+  if (exact) {
+    logger.info(`[findOrCreateSkill] Exact match: "${input.name}" (id: ${exact.id})`);
+    return mergeSkill(supabase, exact.id as string, input, embedding, exact as Record<string, unknown>);
+  }
+
+  // ── 3. Insert new skill ──────────────────────────────────────
+  logger.info(`[findOrCreateSkill] Inserting new skill: "${input.name}"`);
+  const { data: inserted, error: insertErr } = await supabase
+    .from('skills')
+    .insert({
+      topic_id: input.topicId,
+      subject_id: input.subjectId,
+      name: input.name,
+      description: input.description,
+      level: input.level ?? 1,
+      difficulty: input.difficulty ?? null,
+      age_min: input.ageMin ?? null,
+      age_max: input.ageMax ?? null,
+      mastery_criteria: input.masteryCriteria ?? null,
+      development_domain: normalizeDomain(input.developmentDomain),
+      is_global: input.isGlobal ?? false,
+      created_by: input.createdBy,
+      is_active: true,
+      embedding,
+    })
+    .select()
+    .single();
+  if (insertErr) throw insertErr;
+  return { id: inserted.id as string, action: 'created' };
+}
+
+async function mergeSkill(
+  supabase: SupabaseClient,
+  id: string,
+  input: SkillInput,
+  embedding: number[] | null,
+  storedRow?: Record<string, unknown>,
+): Promise<MergeResult> {
+  const row = storedRow ?? await fetchRow(supabase, 'skills', id, ['description', 'difficulty', 'mastery_criteria', 'embedding']);
+  if (!row) return { id, action: 'unchanged' };
+
+  const patch = buildPatch(row, {
+    description: input.description,
+    difficulty: input.difficulty,
+    mastery_criteria: input.masteryCriteria,
+    embedding,
+  }, ['description', 'difficulty', 'mastery_criteria', 'embedding']);
+  const patched = await applyPatch(supabase, 'skills', id, patch, 'findOrCreateSkill');
+  return { id, action: patched ? 'merged' : 'unchanged' };
+}
+
+/** Insert any learning objectives not already present for this skill (name-insensitive). */
+export async function syncLearningObjectives(
+  supabase: SupabaseClient,
+  skillId: string,
+  objectives: string[],
+): Promise<void> {
+  if (!objectives || objectives.length === 0) return;
+  const { data: existing } = await supabase
+    .from('learning_objectives')
+    .select('description')
+    .eq('skill_id', skillId);
+  const existingSet = new Set((existing ?? []).map((o) => o.description.toLowerCase().trim()));
+
+  let orderIndex = existing?.length ?? 0;
+  for (const desc of objectives) {
+    const clean = String(desc).trim();
+    if (!clean || existingSet.has(clean.toLowerCase())) continue;
+    const { error } = await supabase.from('learning_objectives').insert({
+      skill_id: skillId,
+      description: clean,
+      order_index: orderIndex++,
+      is_active: true,
+    });
+    if (error) logger.error(`[syncLearningObjectives] Failed for skill ${skillId}: ${error.message}`);
+  }
+}
+
+/**
+ * Insert prerequisite edges (skill requires each prerequisite). The DB trigger
+ * rejects self-loops and cycles — those are logged and skipped so one bad edge
+ * never fails the whole generation.
+ */
+export async function syncSkillPrerequisites(
+  supabase: SupabaseClient,
+  skillId: string,
+  prerequisiteSkillIds: string[],
+): Promise<void> {
+  for (const prereqId of prerequisiteSkillIds) {
+    if (!prereqId || prereqId === skillId) continue;
+    const { error } = await supabase
+      .from('skill_prerequisites')
+      .upsert({ skill_id: skillId, prerequisite_skill_id: prereqId }, { onConflict: 'skill_id, prerequisite_skill_id' });
+    if (error) logger.warn(`[syncSkillPrerequisites] Skipped ${skillId}->${prereqId}: ${error.message}`);
+  }
+}
+
+/**
+ * Insert a skill_progress row for a child (Not_Started). Logs but does not throw
+ * so a missing progress row never blocks generation. No-op if it already exists.
+ */
+export async function insertSkillProgress(
+  supabase: SupabaseClient,
+  childId: string,
+  skillId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('skill_progress')
+    .upsert({ child_id: childId, skill_id: skillId, status: 'Not_Started' }, { onConflict: 'child_id, skill_id' });
+  if (error) logger.error(`[insertSkillProgress] Failed for skill ${skillId}: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------

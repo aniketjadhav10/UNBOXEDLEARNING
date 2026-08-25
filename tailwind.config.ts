@@ -5,7 +5,7 @@ import type { Config } from 'tailwindcss';
 
 export default {
   darkMode: 'class',
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -31,9 +31,18 @@ export default {
         sidebar: '#1e1b4b',
         'sidebar-hover': '#312e81',
         'sidebar-active': '#4c1d95',
+        // Phase 1 redesign ("Playful & energetic" direction) — additive, distinct
+        // names so they don't shadow the tokens above (still used by auth pages).
+        'nav-from': '#3d2a52',
+        'nav-to': '#2e2140',
+        'accent-pink': '#ec5a91',
+        'accent-coral': '#e8613f',
+        'accent-teal': '#3ec9a7',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-baloo)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        body: ['var(--font-mulish)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         'card': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 4px 16px -2px rgb(0 0 0 / 0.06)',
