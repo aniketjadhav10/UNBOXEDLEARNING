@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { requireGeminiKey } from '@/server/ai/aiClient';
 import { enforceRateLimit, RateLimitError } from '@/server/ai/gateway';
 import { persistSyllabusDraft } from '@/server/ai/persistSyllabus';
-import { assembleSyllabusDraft } from '@/server/ai/generateSyllabus';
+import { assembleSyllabusDraft, assembleSyllabusFromTopicList } from '@/server/ai/generateSyllabus';
 import { logger } from '@/server/logger';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,7 +13,28 @@ export async function POST(req: NextRequest) {
   requireGeminiKey();
 
   const body = await req.json();
-  const sourceText    = readString(body?.sourceText, 'sourceText');
+
+  const topicsInput = Array.isArray(body?.topics)
+    ? body.topics.map((x: any) => String(x).trim()).filter((s: string) => s.length > 0)
+    : null;
+  const isTopicListMode = !!topicsInput && topicsInput.length > 0;
+
+  let sourceText = '';
+  let subjectName = '';
+  let subjectDescription = '';
+  let developmentDomain = '';
+
+  if (isTopicListMode) {
+    if (topicsInput!.length > 80) {
+      return new NextResponse('Too many topics (max 80).', { status: 400 });
+    }
+    subjectName = readString(body?.subjectName, 'subjectName');
+    subjectDescription = body?.subjectDescription ? String(body.subjectDescription) : '';
+    developmentDomain = body?.developmentDomain ? String(body.developmentDomain) : 'academic';
+  } else {
+    sourceText = readString(body?.sourceText, 'sourceText');
+  }
+
   const age           = Number(body?.age)           || 10;
   const topicsCount   = Number(body?.topicsCount)   || 5;
   const tasksPerTopic = Number(body?.tasksPerTopic) || 3;
@@ -50,12 +71,18 @@ export async function POST(req: NextRequest) {
 
   (async () => {
     try {
-      logger.info(`[generateSyllabus] Starting generation for ${topicsCount} topics (preview=${preview}).`);
+      logger.info(`[generateSyllabus] Starting generation (mode=${isTopicListMode ? 'topicList' : 'sourceText'}, preview=${preview}).`);
 
-      const draft = await assembleSyllabusDraft({
-        sourceText, age, skillLevel, targetGrade, topicsCount, tasksPerTopic, interests,
-        ctx, onEvent: sendEvent,
-      });
+      const draft = isTopicListMode
+        ? await assembleSyllabusFromTopicList({
+            subjectName, subjectDescription, developmentDomain,
+            topicTitles: topicsInput!, age, skillLevel, tasksPerTopic, interests,
+            ctx, onEvent: sendEvent,
+          })
+        : await assembleSyllabusDraft({
+            sourceText, age, skillLevel, targetGrade, topicsCount, tasksPerTopic, interests,
+            ctx, onEvent: sendEvent,
+          });
 
       // Review-before-save — hand the draft back, persist nothing yet.
       if (preview) {

@@ -34,9 +34,38 @@ export function TaskQuickActions({
   const isConfident = task.progress?.learning_stage === 'Confident';
   const isFullyMastered = isConfident && (task.progress?.learned_count ?? 0) >= (task.progress?.target_count ?? 5);
 
+  const visibleStages = LEARNING_STAGES.filter((s) =>
+    task.progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true,
+  );
+
+  // Rough on-screen size estimate (before the menu itself has rendered) used
+  // to keep it fully inside the viewport — critical on mobile, where a
+  // single unclamped measurement can otherwise place the menu off-screen.
+  const MENU_WIDTH = 180;
+  const ROW_HEIGHT = 36;
+  const MENU_CHROME = 18; // container's own vertical padding + border
+  const VIEWPORT_MARGIN = 8;
+
   function openStageMenu() {
     const rect = stageButtonRef.current?.getBoundingClientRect();
-    if (rect) setStageMenuPos({ top: rect.bottom + 4, left: rect.left });
+    if (!rect) {
+      setStageMenuOpen(true);
+      return;
+    }
+
+    // visualViewport reflects what's actually visible on mobile (accounts
+    // for the browser chrome/keyboard); innerWidth/Height is the fallback.
+    const vw = window.visualViewport?.width ?? window.innerWidth;
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    const estimatedHeight = visibleStages.length * ROW_HEIGHT + MENU_CHROME;
+
+    const left = Math.min(Math.max(rect.left, VIEWPORT_MARGIN), vw - MENU_WIDTH - VIEWPORT_MARGIN);
+
+    const spaceBelow = vh - rect.bottom;
+    const openAbove = spaceBelow < estimatedHeight + VIEWPORT_MARGIN && rect.top > estimatedHeight;
+    const top = Math.max(VIEWPORT_MARGIN, openAbove ? rect.top - estimatedHeight - 4 : rect.bottom + 4);
+
+    setStageMenuPos({ top, left });
     setStageMenuOpen(true);
   }
 
@@ -88,12 +117,10 @@ export function TaskQuickActions({
                 aria-hidden="true"
               />
               <div
-                className="fixed z-[61] bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] animate-fade-in"
+                className="fixed z-[61] bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] max-h-[70vh] overflow-y-auto animate-fade-in"
                 style={{ top: stageMenuPos.top, left: stageMenuPos.left }}
               >
-                {LEARNING_STAGES.filter(s =>
-                  task.progress?.learning_stage === 'Not_Started' ? s === 'Introduced' || s === 'Not_Started' : true
-                ).map((s) => (
+                {visibleStages.map((s) => (
                   <button
                     key={s}
                     onClick={() => {
