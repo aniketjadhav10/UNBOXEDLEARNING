@@ -10,8 +10,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BookOpen, Search, Plus, Wand2, CheckCircle2,
-  ChevronDown, ChevronLeft, ChevronRight, Sparkles, X, Loader2, Layers,
+  BookOpen, Search, Plus, Wand2, CheckCircle2, BarChart3, CalendarClock,
+  ChevronRight, Sparkles, X, Loader2, Layers,
 } from 'lucide-react';
 import { HierarchicalCard } from '../../components/curriculum/HierarchicalCard';
 import { CurriculumFormModal, type FormField } from '../../components/curriculum/CurriculumFormModal';
@@ -20,7 +20,6 @@ import { SyllabusReviewPanel } from '../../components/curriculum/SyllabusReviewP
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { TaskCard, TaskCardSkeleton } from '../../components/tasks/TaskCard';
-import { TaskFilters } from '../../components/tasks/TaskFilters';
 import {
   createItem, updateItem, deleteItem,
   fetchSubjects, fetchAllSubjectsFromLibrary, fetchTopics,
@@ -34,6 +33,15 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { supabase } from '../../services/supabase';
 import { subjectEmoji, normalizeDifficulty } from '../../utils/string';
+import {
+  getChildPlacement,
+  getSubjectPlacementLabel,
+  getTaskPlacementLabel,
+  getTopicPlacementLabel,
+  isSubjectAppropriateForChild,
+  isTaskAppropriateForChild,
+  isTopicAppropriateForChild,
+} from '../../lib/curriculumPlacement';
 import type { DbSubject, DbTopic, DbTask } from '../../types/database';
 
 type SubjectWithEnrollment = DbSubject & { isEnrolled?: boolean };
@@ -73,19 +81,19 @@ export function CurriculumPage({
 }: CurriculumPageProps) {
   useDocumentTitle('Curriculum Builder');
   const toast = useToast();
-  const { rawChildren, rawTopics: allMyTopics, rawTasks: allMyTasks, refresh } = useData();
+  const { rawChildren, rawTopics: allMyTopics, rawTasks: allMyTasks, taskProgress, refresh } = useData();
   const { selectedChildId } = useSettingsStore();
   const childId = selectedChildId || rawChildren?.[0]?.id || '';
+  const selectedChild = useMemo(() => rawChildren.find((child) => child.id === childId) ?? null, [rawChildren, childId]);
+  const childPlacement = useMemo(() => getChildPlacement(selectedChild), [selectedChild]);
 
   const [tab, setTab] = useState<'mine' | 'library'>(initialTab);
-  const [view, setView] = useState<'tree' | 'tasks'>(initialView);
   const [search, setSearch] = useState('');
 
   const [mySubjects, setMySubjects] = useState<DbSubject[]>([]);
   const [librarySubjects, setLibrarySubjects] = useState<SubjectWithEnrollment[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(initialSubjectId ? [initialSubjectId] : []));
   const [topicsBySubject, setTopicsBySubject] = useState<Record<string, DbTopic[]>>({});
 
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(initialSubjectId ?? null);
@@ -128,11 +136,11 @@ export function CurriculumPage({
         fetchSubjects(childId),
         fetchAllSubjectsFromLibrary(),
       ]);
-      setMySubjects(mine);
+      setMySubjects(mine.filter((subject) => isSubjectAppropriateForChild(subject, selectedChild).matches));
       const withEnrollment = await Promise.all(
         library.map(async (s) => ({ ...s, isEnrolled: childId ? await isEnrolledInSubject(childId, s.id) : false })),
       );
-      setLibrarySubjects(withEnrollment);
+      setLibrarySubjects(withEnrollment.filter((subject) => isSubjectAppropriateForChild(subject, selectedChild).matches || subject.isEnrolled));
     } catch {
       toast.error('Failed to load subjects.');
     } finally {
@@ -140,36 +148,24 @@ export function CurriculumPage({
     }
   }
 
-  useEffect(() => { loadSubjects(); }, [childId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setTopicsBySubject({});
+    loadSubjects();
+  }, [childId, selectedChild]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load topics for an expanded subject (dual-mode: mine vs library) ──
   async function loadTopicsFor(subjectId: string, isLibrary: boolean) {
     if (topicsBySubject[subjectId]) return;
     try {
       const topics = await fetchTopics(subjectId, isLibrary ? undefined : childId);
-      setTopicsBySubject((prev) => ({ ...prev, [subjectId]: topics }));
+      const childTopics = topics.filter((topic) => isTopicAppropriateForChild(topic, selectedChild).matches);
+      setTopicsBySubject((prev) => ({ ...prev, [subjectId]: childTopics }));
     } catch {
       toast.error('Failed to load topics.');
     }
   }
 
-  // Mobile back button: one level at a time (task list → topics → rail).
-  function handleMobileBack() {
-    if (selectedTopicId) setSelectedTopicId(null);
-    else setSelectedSubjectId(null);
-  }
 
-  function toggleExpand(subjectId: string, isLibrary: boolean) {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(subjectId)) next.delete(subjectId); else next.add(subjectId);
-      return next;
-    });
-    loadTopicsFor(subjectId, isLibrary);
-    // Selecting the subject also drives the main panel (topic cards / library preview).
-    setSelectedSubjectId(subjectId);
-    setSelectedTopicId(null);
-  }
 
   // ── Load tasks for the selected topic (Tree view) ──
   async function loadTasksForTopic(topicId: string) {
@@ -177,7 +173,7 @@ export function CurriculumPage({
     try {
       const { data, error } = await supabase.from('tasks').select('*').eq('topic_id', topicId).eq('is_active', true).order('order_index');
       if (error) throw error;
-      setSelectedTopicTasks((data ?? []) as DbTask[]);
+      setSelectedTopicTasks(((data ?? []) as DbTask[]).filter((task) => isTaskAppropriateForChild(task, selectedChild).matches));
     } catch {
       toast.error('Failed to load tasks.');
     } finally {
@@ -206,29 +202,37 @@ export function CurriculumPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenAI, initialSubjectId, subjectsLoading]);
 
-  // ── Task-list view (flat, status-tabbed) — reuse the exact hook TaskManagementPage used ──
   const {
-    filtered: allFilteredTasks, loading: taskListLoading,
-    filter, setFilter, sortKey, setSortKey, search: taskSearch, setSearch: setTaskSearch,
-    activeTab: taskTab, setActiveTab: setTaskTab,
+    filtered: allFilteredTasks,
     handleMarkPracticed, handleUpdateStage, handleUpdateInterest, handleToggleSchedule,
-    handleArchive, handleUnarchive, load: reloadTaskList,
+    handleArchive, handleUnarchive, load: reloadTaskList
   } = useTaskManagement(childId, 'all');
 
-  // Scope the flat task list to the selected subject/topic, if any is selected.
-  const scopedTaskIds = useMemo(() => {
-    if (!selectedSubjectId) return null; // null = no scoping, show everything
-    const topicIds = new Set(allMyTopics.filter((t) => t.subject_id === selectedSubjectId).map((t) => t.id));
-    if (selectedTopicId) return new Set(allMyTasks.filter((t) => t.topic_id === selectedTopicId).map((t) => t.id));
-    return new Set(allMyTasks.filter((t) => topicIds.has(t.topic_id)).map((t) => t.id));
-  }, [selectedSubjectId, selectedTopicId, allMyTopics, allMyTasks]);
+  const topicTasksWithProgress = useMemo(() => {
+    return selectedTopicTasks.map(task => {
+      const existing = allFilteredTasks.find(t => t.id === task.id);
+      if (existing) return existing;
+      return {
+        ...task,
+        progress: null,
+        progressPercent: 0,
+        isOverdue: false,
+        isDueToday: false,
+        isPracticedToday: false,
+        isInactive: true,
+        recommendedAction: 'Start first practice session'
+      } as any;
+    });
+  }, [selectedTopicTasks, allFilteredTasks]);
 
-  const scopedTasks = useMemo(
-    () => (scopedTaskIds ? allFilteredTasks.filter((t) => scopedTaskIds.has(t.id)) : allFilteredTasks),
-    [allFilteredTasks, scopedTaskIds],
-  );
-
-  const subjectOptions = mySubjects.map((s) => ({ id: s.id, name: s.name }));
+  const childAiContext = useMemo(() => ({
+    child_id: childId || undefined,
+    age_group: childPlacement.ageGroup,
+    age: childPlacement.age ?? undefined,
+    targetGrade: selectedChild?.grade_level || undefined,
+    interests: selectedChild?.interests ?? [],
+    learningStyle: selectedChild?.learning_style ?? undefined,
+  }), [childId, childPlacement, selectedChild]);
 
   // ── Subject CRUD ──────────────────────────────────────────
   async function handleSubjectSubmit(data: any) {
@@ -255,7 +259,7 @@ export function CurriculumPage({
       const res = await fetch('/api/ai/generate-topics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: session ? `Bearer ${session.access_token}` : '' },
-        body: JSON.stringify({ subject_id: subject.id, subject_name: subject.name, child_id: childId }),
+        body: JSON.stringify({ subject_id: subject.id, subject_name: subject.name, ...childAiContext }),
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed to generate content'); }
       toast.success(`AI generated topics & tasks for "${subject.name}"!`);
@@ -296,7 +300,7 @@ export function CurriculumPage({
       const res = await fetch('/api/ai/generate-tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: session ? `Bearer ${session.access_token}` : '' },
-        body: JSON.stringify({ topic_id: topic.id, topic_name: topic.title, subject_name: selectedSubject.name, child_id: childId }),
+        body: JSON.stringify({ topic_id: topic.id, topic_name: topic.title, subject_name: selectedSubject.name, ...childAiContext }),
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed to generate content'); }
       toast.success(`AI generated tasks for "${topic.title}"!`);
@@ -322,7 +326,6 @@ export function CurriculumPage({
         toast.success(`"${data.name}" created!`);
       }
       loadTasksForTopic(selectedTopicId);
-      reloadTaskList();
     } catch {
       toast.error('Failed to save task.');
     }
@@ -347,6 +350,8 @@ export function CurriculumPage({
   // ── Library enrollment ───────────────────────────────────
   async function handleEnroll(subject: SubjectWithEnrollment) {
     if (!childId) { toast.error('Add a child profile first.'); return; }
+    const placement = isSubjectAppropriateForChild(subject, selectedChild);
+    if (!placement.matches && !window.confirm(subject.name + ' is ' + placement.reason + ' Enroll anyway?')) return;
     try {
       await enrollInSubject(childId, subject.id);
       toast.success(`Enrolled in "${subject.name}"!`);
@@ -367,7 +372,7 @@ export function CurriculumPage({
       const res = await fetch('/api/ai/generate-syllabus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: session ? `Bearer ${session.access_token}` : '' },
-        body: JSON.stringify({ sourceText: aiSourceText, preview: true, childId: childId || undefined }),
+        body: JSON.stringify({ sourceText: aiSourceText, preview: true, childId: childId || undefined, ...childAiContext }),
       });
       if (!res.ok || !res.body) throw new Error('Failed to generate.');
       const reader = res.body.getReader();
@@ -424,265 +429,335 @@ export function CurriculumPage({
     }
   }
 
-  const railSubjects = (tab === 'mine' ? mySubjects : librarySubjects).filter(
+  const subjectStats = useMemo(() => {
+    const progressByTaskId = new Map(
+      taskProgress
+        .filter((p) => !childId || p.child_id === childId)
+        .map((p) => [p.task_id, p]),
+    );
+
+    return [...mySubjects, ...librarySubjects].reduce<Record<string, { progress: number; topicsCount: number; tasksCount: number; scheduledCount: number }>>((acc, subject) => {
+      const loadedTopics = topicsBySubject[subject.id] ?? [];
+      const subjectTopics = allMyTopics.filter((topic) => topic.subject_id === subject.id);
+      const topics = subjectTopics.length > 0 ? subjectTopics : loadedTopics;
+      const topicIds = new Set(topics.map((topic) => topic.id));
+      const tasks = allMyTasks.filter((task) => topicIds.has(task.topic_id));
+      const completedCount = tasks.filter((task) => {
+        const progress = progressByTaskId.get(task.id);
+        return progress && ['Comfortable', 'Confident'].includes(progress.learning_stage);
+      }).length;
+      const scheduledCount = tasks.filter((task) => progressByTaskId.get(task.id)?.is_scheduled_this_week).length;
+
+      acc[subject.id] = {
+        progress: tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0,
+        topicsCount: topics.length,
+        tasksCount: tasks.length,
+        scheduledCount,
+      };
+      return acc;
+    }, {});
+  }, [allMyTasks, allMyTopics, childId, librarySubjects, mySubjects, taskProgress, topicsBySubject]);
+
+  const filteredSubjects = (tab === 'mine' ? mySubjects : librarySubjects).filter(
     (s) => !search.trim() || s.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+
+  // Compute task counts per topic for topics grid
+  const topicTaskCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const task of allMyTasks) {
+      map[task.topic_id] = (map[task.topic_id] || 0) + 1;
+    }
+    return map;
+  }, [allMyTasks]);
+
+  // Helper: select a subject and auto-load its topics
+  function handleSelectSubject(subjectId: string) {
+    setSelectedSubjectId(subjectId);
+    setSelectedTopicId(null);
+    loadTopicsFor(subjectId, tab === 'library');
+  }
+
+  // Determine current drill-down level
+  const level: 1 | 2 | 3 = selectedTopicId ? 3 : selectedSubjectId ? 2 : 1;
+
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-6rem)] -m-3 sm:-m-4 lg:-m-6 bg-[#f4f6f8]">
-      {/* ── Subject rail — full-width "home" screen on mobile until a subject is picked, side panel at lg: ── */}
-      <div className={`${selectedSubjectId ? 'hidden lg:flex' : 'flex'} w-full lg:w-64 lg:flex-shrink-0 border-r border-gray-200 bg-white flex-col`}>
-        <div className="p-4 border-b border-gray-100 space-y-3">
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-            <button onClick={() => setTab('mine')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${tab === 'mine' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
-              My Curriculum
-            </button>
-            <button onClick={() => setTab('library')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${tab === 'library' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
-              Browse Library
-            </button>
-          </div>
-          <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search subjects…"
-              className="w-full pl-8 pr-2 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-accent-pink"
-            />
-          </div>
-          {tab === 'mine' && (
+    <div className="animate-fade-in min-h-screen" style={{ background: '#f4f6f8', margin: '-12px -16px', padding: '20px 16px 100px' }}>
+      {/* ═══════════════════════════════════════════════════════════
+          BREADCRUMB NAVIGATION
+         ═══════════════════════════════════════════════════════════ */}
+      <nav className="flex items-center gap-1.5 text-sm mb-5 flex-wrap" aria-label="Breadcrumb">
+        <button
+          onClick={() => { setSelectedSubjectId(null); setSelectedTopicId(null); }}
+          className={`font-bold transition-colors ${level === 1 ? 'text-gray-900' : 'text-violet-600 hover:text-violet-700'}`}
+        >
+          Curriculum
+        </button>
+        {selectedSubject && (
+          <>
+            <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
             <button
-              onClick={() => setSubjectModal({ open: true })}
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-lg hover:opacity-90 transition-opacity"
+              onClick={() => { setSelectedTopicId(null); }}
+              className={`font-bold transition-colors truncate max-w-[200px] ${level === 2 ? 'text-gray-900' : 'text-violet-600 hover:text-violet-700'}`}
             >
-              <Plus size={13} /> Add Subject
+              {selectedSubject.name}
             </button>
-          )}
-        </div>
+          </>
+        )}
+        {selectedTopic && (
+          <>
+            <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
+            <span className="font-bold text-gray-900 truncate max-w-[200px]">{selectedTopic.title}</span>
+          </>
+        )}
+      </nav>
 
-        <div className="flex-1 overflow-y-auto p-2">
-          {subjectsLoading ? (
-            <div className="space-y-2 p-2">{[...Array(4)].map((_, i) => <div key={i} className="h-9 bg-gray-100 rounded-lg animate-pulse" />)}</div>
-          ) : railSubjects.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8">{tab === 'mine' ? 'No subjects yet.' : 'No subjects found.'}</p>
-          ) : (
-            railSubjects.map((s) => {
-              const isExpanded = expandedIds.has(s.id);
-              const topics = topicsBySubject[s.id] ?? [];
-              const isEnrolled = tab === 'library' ? (s as SubjectWithEnrollment).isEnrolled : true;
-              return (
-                <div key={s.id} className="mb-0.5">
-                  <button
-                    onClick={() => toggleExpand(s.id, tab === 'library')}
-                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-colors ${
-                      selectedSubjectId === s.id ? 'bg-accent-pink/10 font-bold text-accent-pink' : 'font-semibold text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    <span>{subjectEmoji(s.name)}</span>
-                    <span className="flex-1 text-left truncate">{s.name}</span>
-                    {tab === 'library' && isEnrolled && <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />}
-                  </button>
-                  {isExpanded && (
-                    <div className="pl-7 space-y-0.5 mt-0.5">
-                      {topics.length === 0 ? (
-                        <p className="text-[11px] text-gray-400 px-2 py-1">No topics</p>
-                      ) : topics.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => { setSelectedSubjectId(s.id); setSelectedTopicId(t.id); }}
-                          className={`w-full text-left px-2 py-1.5 rounded-lg text-xs truncate transition-colors ${
-                            selectedTopicId === t.id ? 'bg-accent-pink/10 font-bold text-accent-pink' : 'text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {t.title}
-                        </button>
-                      ))}
-                      {tab === 'mine' && (
-                        <button
-                          onClick={() => { setSelectedSubjectId(s.id); setSelectedTopicId(null); setTopicModal({ open: true }); }}
-                          className="w-full text-left px-2 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-50 hover:text-accent-pink"
-                        >
-                          + Add topic
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* ── Main — full-width once a subject is picked on mobile, always visible at lg: ── */}
-      <div className={`${selectedSubjectId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-w-0 lg:overflow-hidden`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-200 bg-white">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={handleMobileBack}
-              className="lg:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0"
-              aria-label="Back"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            {selectedSubject && (
-              <p className="font-display text-base lg:text-lg font-bold text-gray-900 truncate">
-                {selectedSubject.name}{selectedTopic && <span className="text-gray-300 mx-2">→</span>}{selectedTopic?.title}
-              </p>
-            )}
-            {!selectedSubject && <p className="font-display text-base lg:text-lg font-bold text-gray-900">Curriculum Builder</p>}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+      {/* ═══════════════════════════════════════════════════════════
+          LEVEL 1 — SUBJECTS GRID
+         ═══════════════════════════════════════════════════════════ */}
+      {level === 1 && (
+        <div className="space-y-5">
+          {/* Header bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Tab toggle */}
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              <button onClick={() => setView('tree')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'tree' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>Tree</button>
-              <button onClick={() => setView('tasks')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${view === 'tasks' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>Task list</button>
+              <button onClick={() => setTab('mine')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === 'mine' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
+                My Curriculum
+              </button>
+              <button onClick={() => setTab('library')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === 'library' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}>
+                Browse Library
+              </button>
             </div>
-            <button
-              onClick={() => setAiBuildOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-            >
-              <Wand2 size={13} /> Build with AI
-            </button>
+            {tab === 'mine' && (
+              <button
+                onClick={() => setSubjectModal({ open: true })}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Plus size={14} /> Add Subject
+              </button>
+            )}
           </div>
-        </div>
 
-        <div className="flex-1 lg:overflow-y-auto p-4 lg:p-6">
-          {view === 'tree' ? (
-            tab === 'library' && selectedSubject ? (
-              /* ── Library subject preview ─────────────────────── */
-              <div className="max-w-2xl">
-                <p className="text-sm text-gray-500 mb-4">{selectedSubject.description ?? `Learn about ${selectedSubject.name}.`}</p>
-                <div className="flex gap-2 mb-6">
+          {/* Subject cards grid */}
+          {subjectsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(6)].map((_, i) => <div key={i} className="h-48 bg-white rounded-2xl animate-pulse border border-gray-100" />)}
+            </div>
+          ) : filteredSubjects.length === 0 ? (
+            search.trim() ? (
+              <div className="text-center py-16">
+                <p className="text-gray-400 text-sm">No subjects match &ldquo;{search}&rdquo;</p>
+                <button onClick={() => setSearch('')} className="mt-2 text-violet-600 text-sm font-medium">Clear search</button>
+              </div>
+            ) : (
+              <EmptyState
+                icon={BookOpen}
+                title={tab === 'mine' ? 'No subjects yet' : 'No subjects found'}
+                description={tab === 'mine' ? 'Add your first subject to start building the curriculum, or use AI to generate one.' : 'Browse the library to find subjects to enroll in.'}
+                actionLabel={tab === 'mine' ? 'Add Subject' : undefined}
+                onAction={tab === 'mine' ? () => setSubjectModal({ open: true }) : undefined}
+              />
+            )
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredSubjects.map((s) => {
+                const stats = subjectStats[s.id] ?? { progress: 0, topicsCount: 0, tasksCount: 0, scheduledCount: 0 };
+                const isEnrolled = tab === 'library' ? (s as SubjectWithEnrollment).isEnrolled : true;
+                return (
+                  <HierarchicalCard
+                    key={s.id}
+                    title={s.name}
+                    description={s.description || undefined}
+                    icon={<span className="text-lg">{subjectEmoji(s.name)}</span>}
+                    badge={<div className="flex flex-wrap gap-1">
+                      <span title={isSubjectAppropriateForChild(s, selectedChild).reason} className="text-[10px] px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full font-bold">{getSubjectPlacementLabel(s)}</span>
+                      {tab === 'library' && isEnrolled && <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-bold flex items-center gap-0.5"><CheckCircle2 size={10} /> Enrolled</span>}
+                    </div>}
+                    progress={stats.progress}
+                    footerItems={[
+                      { label: 'Topics', value: stats.topicsCount, icon: <BookOpen size={12} /> },
+                      { label: 'Tasks', value: stats.tasksCount, icon: <BarChart3 size={12} /> },
+                      { label: 'Scheduled', value: stats.scheduledCount, icon: <CalendarClock size={12} /> },
+                    ]}
+                    onEdit={tab === 'mine' ? () => { setSubjectModal({ open: true, editing: s }); } : undefined}
+                    onDelete={tab === 'mine' ? () => setConfirmDelete({ table: 'subjects', id: s.id, label: s.name }) : undefined}
+                    onClick={() => handleSelectSubject(s.id)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          LEVEL 2 — TOPICS GRID (subject selected)
+         ═══════════════════════════════════════════════════════════ */}
+      {level === 2 && selectedSubject && (
+        <div className="space-y-5">
+          {/* Header bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-2xl shadow-sm">
+                  {subjectEmoji(selectedSubject.name)}
+                </div>
+                <div>
+                  <h1 className="text-xl font-black text-gray-900">{selectedSubject.name}</h1>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    {(topicsBySubject[selectedSubject.id] ?? []).length} topic{(topicsBySubject[selectedSubject.id] ?? []).length !== 1 ? 's' : ''}
+                    {selectedSubject.description && <> · {selectedSubject.description}</>}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {tab === 'library' ? (
+                <>
                   <button
                     onClick={() => setPickerSubjectId(selectedSubject.id)}
-                    className="px-4 py-2 text-xs font-bold text-accent-pink border border-accent-pink/30 rounded-xl hover:bg-accent-pink/5"
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-accent-pink border border-accent-pink/30 rounded-xl hover:bg-accent-pink/5"
                   >
                     Pick individual topics
                   </button>
                   <button
                     onClick={() => handleEnroll(selectedSubject as SubjectWithEnrollment)}
                     disabled={(selectedSubject as SubjectWithEnrollment).isEnrolled}
-                    className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl disabled:opacity-50"
                   >
                     {(selectedSubject as SubjectWithEnrollment).isEnrolled ? 'Already enrolled' : 'Enroll All Topics'}
                   </button>
-                </div>
-                <div className="grid gap-2">
-                  {(topicsBySubject[selectedSubject.id] ?? []).map((t) => (
-                    <div key={t.id} className="p-3 bg-white rounded-xl border border-gray-100 text-sm font-semibold text-gray-700">{t.title}</div>
-                  ))}
-                </div>
-              </div>
-            ) : selectedTopicId ? (
-              /* ── Tasks for selected topic ─────────────────────── */
-              <div className="space-y-3 max-w-3xl">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-semibold text-gray-400">{selectedTopicTasks.length} task{selectedTopicTasks.length === 1 ? '' : 's'}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => selectedTopic && handleGenerateForTopic(selectedTopic)}
-                      disabled={aiGenerating === selectedTopicId}
-                      className="flex items-center gap-1.5 text-xs font-bold text-accent-pink px-3 py-1.5 rounded-lg hover:bg-accent-pink/10"
-                    >
-                      {aiGenerating === selectedTopicId ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                      Generate Tasks with AI
-                    </button>
-                    <button onClick={() => setTaskModal({ open: true })} className="flex items-center gap-1.5 text-xs font-bold text-white bg-accent-coral px-3 py-1.5 rounded-lg">
-                      <Plus size={12} /> Add Task
-                    </button>
-                  </div>
-                </div>
-                {tasksLoading ? (
-                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-                ) : selectedTopicTasks.length === 0 ? (
-                  <EmptyState icon={Layers} title="No tasks yet" description="Add a task manually or generate them with AI." actionLabel="Add Task" onAction={() => setTaskModal({ open: true })} />
-                ) : (
-                  selectedTopicTasks.map((task) => (
-                    <HierarchicalCard
-                      key={task.id}
-                      title={task.name}
-                      description={task.description ?? undefined}
-                      badge={<span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold">{normalizeDifficulty(task.difficulty_level)}</span>}
-                      onEdit={() => setTaskModal({ open: true, editing: task })}
-                      onDelete={() => setConfirmDelete({ table: 'tasks', id: task.id, label: task.name })}
-                    />
-                  ))
-                )}
-              </div>
-            ) : selectedSubject ? (
-              /* ── Topics for selected subject ──────────────────── */
-              <div className="space-y-3 max-w-3xl">
-                <div className="flex justify-end gap-2 mb-1">
+                </>
+              ) : (
+                <>
                   <button
                     onClick={() => handleGenerateForSubject(selectedSubject)}
                     disabled={aiGenerating === selectedSubject.id}
-                    className="flex items-center gap-1.5 text-xs font-bold text-accent-pink px-3 py-1.5 rounded-lg hover:bg-accent-pink/10"
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-accent-pink border border-accent-pink/30 rounded-xl hover:bg-accent-pink/5"
                   >
-                    {aiGenerating === selectedSubject.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                    Generate Topics &amp; Tasks with AI
+                    {aiGenerating === selectedSubject.id ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    Generate with AI
                   </button>
-                  <button onClick={() => setTopicModal({ open: true })} className="flex items-center gap-1.5 text-xs font-bold text-white bg-accent-coral px-3 py-1.5 rounded-lg">
-                    <Plus size={12} /> Add Topic
+                  <button
+                    onClick={() => setTopicModal({ open: true })}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl hover:opacity-90 shadow-sm"
+                  >
+                    <Plus size={14} /> Add Topic
                   </button>
-                </div>
-                {(topicsBySubject[selectedSubject.id] ?? []).length === 0 ? (
-                  <EmptyState icon={BookOpen} title="No topics in this subject" description="Create topics to break this subject into manageable units, or generate them with AI." actionLabel="Add Topic" onAction={() => setTopicModal({ open: true })} />
-                ) : (
-                  (topicsBySubject[selectedSubject.id] ?? []).map((topic) => (
-                    <HierarchicalCard
-                      key={topic.id}
-                      title={topic.title}
-                      description={topic.description ?? undefined}
-                      badge={<span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold">{normalizeDifficulty(topic.difficulty_level)}</span>}
-                      onEdit={() => setTopicModal({ open: true, editing: topic })}
-                      onDelete={() => setConfirmDelete({ table: 'topics', id: topic.id, label: topic.title })}
-                      onClick={() => setSelectedTopicId(topic.id)}
-                    />
-                  ))
-                )}
-              </div>
-            ) : (
-              <EmptyState icon={BookOpen} title="Pick a subject" description="Select a subject from the left to see its topics, or browse the library to enroll in a new one." />
-            )
-          ) : (
-            /* ── Flat task list (status-tabbed) ───────────────── */
-            <div className="space-y-4">
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
-                {(['all', 'today', 'overdue', 'mastered', 'scheduled', 'archived'] as const).map((k) => (
-                  <button key={k} onClick={() => setTaskTab(k)} className={`flex-shrink-0 py-2 px-3 text-xs font-semibold rounded-xl capitalize transition-all ${taskTab === k ? 'bg-white text-accent-pink shadow-sm' : 'text-gray-500'}`}>
-                    {k}
-                  </button>
-                ))}
-              </div>
-              <TaskFilters filter={filter} onFilterChange={setFilter} sortKey={sortKey} onSortChange={setSortKey} search={taskSearch} onSearchChange={setTaskSearch} subjectOptions={subjectOptions} />
-              {taskListLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <TaskCardSkeleton key={i} />)}</div>
-              ) : scopedTasks.length === 0 ? (
-                <EmptyState icon={BookOpen} title="No tasks here" description="Nothing matches this filter yet." />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {scopedTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onMarkPracticed={handleMarkPracticed}
-                      onUpdateStage={handleUpdateStage}
-                      onUpdateInterest={handleUpdateInterest}
-                      onToggleSchedule={handleToggleSchedule}
-                      onArchive={handleArchive}
-                      onUnarchive={handleUnarchive}
-                      onOpenDetails={() => {}}
-                    />
-                  ))}
-                </div>
+                </>
               )}
+            </div>
+          </div>
+
+          {/* Topic cards grid */}
+          {(topicsBySubject[selectedSubject.id] ?? []).length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              title="No topics in this subject"
+              description="Create topics to break this subject into manageable learning units, or generate them with AI."
+              actionLabel={tab === 'mine' ? 'Add Topic' : undefined}
+              onAction={tab === 'mine' ? () => setTopicModal({ open: true }) : undefined}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(topicsBySubject[selectedSubject.id] ?? []).map((topic) => {
+                const taskCount = topicTaskCounts[topic.id] || 0;
+                return (
+                  <HierarchicalCard
+                    key={topic.id}
+                    title={topic.title}
+                    description={topic.description ?? undefined}
+                    icon={<BookOpen size={18} />}
+                    badge={<div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full font-bold">{normalizeDifficulty(topic.difficulty_level)}</span>
+                      <span title={isTopicAppropriateForChild(topic, selectedChild).reason} className="text-[10px] px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full font-bold">{getTopicPlacementLabel(topic)}</span>
+                    </div>}
+                    footerItems={[
+                      { label: 'Tasks', value: taskCount, icon: <BarChart3 size={12} /> },
+                    ]}
+                    onEdit={tab === 'mine' ? () => setTopicModal({ open: true, editing: topic }) : undefined}
+                    onDelete={tab === 'mine' ? () => setConfirmDelete({ table: 'topics', id: topic.id, label: topic.title }) : undefined}
+                    onClick={() => setSelectedTopicId(topic.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* ── Modals ───────────────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════
+          LEVEL 3 — TASKS LIST (topic selected)
+         ═══════════════════════════════════════════════════════════ */}
+      {level === 3 && selectedSubject && selectedTopic && (
+        <div className="space-y-5">
+          {/* Header bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-black text-gray-900">{selectedTopic.title}</h1>
+              <p className="text-sm text-gray-400 mt-0.5">
+                {selectedTopicTasks.length} task{selectedTopicTasks.length !== 1 ? 's' : ''}
+                {selectedTopic.description && <> · {selectedTopic.description}</>}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleGenerateForTopic(selectedTopic)}
+                disabled={aiGenerating === selectedTopicId}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-accent-pink border border-accent-pink/30 rounded-xl hover:bg-accent-pink/5"
+              >
+                {aiGenerating === selectedTopicId ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                Generate Tasks
+              </button>
+              <button
+                onClick={() => setTaskModal({ open: true })}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-accent-pink to-accent-coral rounded-xl hover:opacity-90 shadow-sm"
+              >
+                <Plus size={14} /> Add Task
+              </button>
+            </div>
+          </div>
+
+          {/* Task content */}
+          {/* ── Tree view: Task cards ─────────────────────────── */}
+          {tasksLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-32 bg-white rounded-2xl animate-pulse border border-gray-100" />)}
+            </div>
+          ) : selectedTopicTasks.length === 0 ? (
+            <EmptyState
+              icon={Layers}
+              title="No tasks yet"
+              description="Add a task manually or generate them with AI."
+              actionLabel="Add Task"
+              onAction={() => setTaskModal({ open: true })}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topicTasksWithProgress.map((task) => (
+                <div key={task.id} className="relative group">
+                  <TaskCard
+                    task={task}
+                    onMarkPracticed={handleMarkPracticed}
+                    onUpdateStage={handleUpdateStage}
+                    onUpdateInterest={handleUpdateInterest}
+                    onToggleSchedule={handleToggleSchedule}
+                    onArchive={handleArchive}
+                    onUnarchive={handleUnarchive}
+                    onDelete={() => setConfirmDelete({ table: 'tasks', id: task.id, label: task.name })}
+                    onOpenDetails={() => setTaskModal({ open: true, editing: task })}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          MODALS (preserved from original)
+         ═══════════════════════════════════════════════════════════ */}
       <CurriculumFormModal isOpen={subjectModal.open} onClose={() => setSubjectModal({ open: false })} title={subjectModal.editing ? 'Edit Subject' : 'Add Subject'} fields={SUBJECT_FIELDS} initialData={subjectModal.editing} onSubmit={handleSubjectSubmit} />
       <CurriculumFormModal isOpen={topicModal.open} onClose={() => setTopicModal({ open: false })} title={topicModal.editing ? 'Edit Topic' : 'Add Topic'} fields={TOPIC_FIELDS} initialData={topicModal.editing} onSubmit={handleTopicSubmit} />
       <CurriculumFormModal isOpen={taskModal.open} onClose={() => setTaskModal({ open: false })} title={taskModal.editing ? 'Edit Task' : 'Add Task'} fields={TASK_FIELDS} initialData={taskModal.editing} onSubmit={handleTaskSubmit} />
@@ -729,3 +804,4 @@ export function CurriculumPage({
     </div>
   );
 }
+

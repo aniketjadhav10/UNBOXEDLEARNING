@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
+import { BottomNav } from '../components/BottomNav';
 import { PageTransition } from '../components/motion/PageTransition';
 import { FloatingChat } from '../components/chat/FloatingChat';
 
@@ -14,16 +15,17 @@ import { FloatingChat } from '../components/chat/FloatingChat';
 const PAGE_TITLES: Record<string, string> = {
   '':            'Dashboard',
   'kids':        'Kids',
-  'subjects':    'Subjects',
+  'subjects':    'Curriculum',
   'topics':      'All Topics',
   'activities':  'Activities',
   'tasks':       'Learning Tasks',
   'this-week':   'This Week',
+  'planner':     'Week Plan',
   'reports':     'Reports',
   'settings':    'Settings',
   'family':      'Family Workspace',
   'my-learning': 'My Learning',
-  'progress':    'My Progress',
+  'progress':    'Progress',
   'profile':     'My Profile',
   'syllabus-generator': 'AI Syllabus Generator',
   'library':           'Subject Library',
@@ -64,11 +66,14 @@ export function MainLayout({ children }: { children?: ReactNode }) {
         {/* Scrollable content area with page transitions */}
         <main
           id="main-content"
-          className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
+          className="flex-1 overflow-y-auto p-3 pb-24 sm:p-4 sm:pb-24 lg:p-6"
         >
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+
+      {/* ── Mobile Bottom Navigation ───────────────────────── */}
+      <BottomNav />
 
       {/* ── Global Floating Chat ────────────────────────────── */}
       <FloatingChat />

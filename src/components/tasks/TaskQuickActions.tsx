@@ -83,13 +83,13 @@ export function TaskQuickActions({
   }, [stageMenuOpen]);
 
   return (
-    <div className="relative flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100">
+    <div className="relative mt-2 flex items-center gap-1.5 border-t border-gray-100 pt-2 overflow-x-auto pb-1 hide-scrollbar sm:flex-wrap sm:overflow-visible sm:pb-0">
       {/* Mark Practiced */}
       <button
         id={`practice-${task.id}`}
         onClick={() => onMarkPracticed(task)}
         disabled={isNotStarted || isFullyMastered || task.isPracticedToday}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-semibold rounded-lg transition-all duration-200 hover:shadow-sm active:scale-95"
+        className="inline-flex flex-shrink-0 whitespace-nowrap min-h-9 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3 text-xs font-bold text-white transition-all duration-200 hover:bg-violet-700 hover:shadow-sm active:scale-95 disabled:bg-gray-200 disabled:text-gray-400"
       >
         <Plus size={12} />
         {task.isPracticedToday ? 'Practiced Today' : 'Practiced'}
@@ -101,7 +101,7 @@ export function TaskQuickActions({
           <button
             ref={stageButtonRef}
             onClick={() => (stageMenuOpen ? setStageMenuOpen(false) : openStageMenu())}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition-all duration-200"
+            className="inline-flex flex-shrink-0 whitespace-nowrap min-h-9 items-center justify-center gap-1.5 rounded-xl bg-white px-3 text-xs font-bold text-gray-600 shadow-sm ring-1 ring-gray-100 transition-all duration-200 hover:bg-gray-50"
           >
             <RotateCcw size={11} />
             Stage
@@ -142,28 +142,11 @@ export function TaskQuickActions({
         </div>
       )}
 
-      {/* Reschedule button */}
-      <button
-        onClick={() => onToggleSchedule?.(task)}
-        disabled={isNotStarted}
-        className={[
-          "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 disabled:opacity-50",
-          isFullyMastered ? "flex-1 justify-center" : "",
-          task.progress?.is_scheduled_this_week
-            ? "text-violet-600 bg-violet-50 hover:bg-violet-100"
-            : "text-gray-500 hover:text-violet-600 hover:bg-violet-50"
-        ].join(" ")}
-        title={task.progress?.is_scheduled_this_week ? "Unschedule" : "Schedule for this week"}
-      >
-        <Calendar size={13} />
-        <span>This Week</span>
-      </button>
-
       {/* Archive / Unarchive */}
       {task.is_active === false ? (
         <button
           onClick={() => onUnarchive?.(task.id)}
-          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+          className="inline-flex flex-shrink-0 min-h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-400 shadow-sm ring-1 ring-gray-100 transition-colors hover:bg-green-50 hover:text-green-600"
           title="Restore task"
         >
           <RotateCcw size={13} />
@@ -171,7 +154,7 @@ export function TaskQuickActions({
       ) : (
         <button
           onClick={() => setArchiveModalOpen(true)}
-          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          className="inline-flex flex-shrink-0 min-h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-400 shadow-sm ring-1 ring-gray-100 transition-colors hover:bg-red-50 hover:text-red-500"
           title="Archive task"
         >
           <Archive size={13} />
@@ -181,7 +164,7 @@ export function TaskQuickActions({
       {/* Expand details */}
       <button
         onClick={onExpandDetails}
-        className="ml-auto flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 font-medium transition-colors"
+        className="inline-flex flex-shrink-0 whitespace-nowrap min-h-9 items-center justify-center gap-1 rounded-xl bg-white px-3 text-xs font-bold text-violet-600 shadow-sm ring-1 ring-violet-100 transition-colors hover:text-violet-800 sm:ml-auto"
       >
         Details
         <ChevronDown size={12} />

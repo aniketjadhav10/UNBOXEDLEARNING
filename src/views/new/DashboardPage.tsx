@@ -2,14 +2,16 @@
 import {
   Activity,
   AlertCircle,
-  Calendar,
-  Check,
+  ArrowRight,
+  BookOpen,
+  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   Clock,
   GraduationCap,
   ListChecks,
   RefreshCw,
-  SkipForward,
+  Loader2,
   Sparkles,
   TrendingUp,
   Users,
@@ -26,6 +28,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { useTaskManagement } from '../../hooks/useTaskManagement';
 import { fetchTasksWithProgress, computeDashboardSummary } from '../../services/taskService';
 import { fetchSessions, updateSessionStatus, type ScheduledSessionView } from '../../services/scheduleService';
+import { ScheduledTaskCard } from '../../components/tasks/ScheduledTaskCard';
 import { DashboardSummaryWidgets } from '../../components/tasks/DashboardSummaryWidgets';
 import { masteryRung, type LearningStage } from '../../lib/masteryLadder';
 import type { DashboardSummary } from '../../types/taskTypes';
@@ -79,11 +82,28 @@ function SectionHeader({ title, actionLabel, onAction }: {
   );
 }
 
+function TodayMetric({ label, value, icon: Icon, tone }: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+      <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-xl ${tone}`}>
+        <Icon size={16} />
+      </div>
+      <p className="text-xl font-black leading-none text-gray-900">{value}</p>
+      <p className="mt-1 text-[11px] font-semibold text-gray-400">{label}</p>
+    </div>
+  );
+}
+
 /* ─── Dashboard Page ─────────────────────────────────────────── */
 export function DashboardPage() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
-  const { kids, subjects, topics, tasks, rawSubjects, rawTopics, rawTasks, loading, error, isEmpty, refresh } = useData();
+  const { kids, subjects, topics, tasks, rawSubjects, rawTopics, rawTasks, taskProgress, loading, error, isEmpty, refresh } = useData();
   const { selectedChildId } = useSettingsStore();
 
   const resolvedChildId = selectedChildId || (kids.length === 1 ? kids[0].id : null);
@@ -105,6 +125,7 @@ export function DashboardPage() {
 
   const [todaySessions, setTodaySessions] = useState<ScheduledSessionView[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
 
   const loadTodaySessions = useCallback(async () => {
     if (!childId) return;
@@ -122,7 +143,29 @@ export function DashboardPage() {
 
   useEffect(() => { loadTodaySessions(); }, [loadTodaySessions]);
 
-  async function handleSessionAction(id: string, status: 'completed' | 'skipped') {
+  async function handleGenerateWeekPlan() {
+    setGeneratingPlan(true);
+    try {
+      const res = await fetch('/api/planner/generate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate plan.');
+      await loadTodaySessions();
+    } catch (err) {
+      console.error('Failed to generate week plan from Today:', err);
+    } finally {
+      setGeneratingPlan(false);
+    }
+  }
+
+  const taskById = useMemo(() => new Map(rawTasks.map((task) => [task.id, task])), [rawTasks]);
+  const topicById = useMemo(() => new Map(rawTopics.map((topic) => [topic.id, topic])), [rawTopics]);
+  const subjectById = useMemo(() => new Map(rawSubjects.map((subject) => [subject.id, subject])), [rawSubjects]);
+  const progressByTaskId = useMemo(
+    () => new Map(taskProgress.filter((p) => p.child_id === childId).map((p) => [p.task_id, p])),
+    [childId, taskProgress],
+  );
+
+  async function handleSessionAction(id: string, status: 'completed' | 'skipped' | 'planned') {
     setTodaySessions((prev) => prev.filter((s) => s.id !== id));
     try {
       await updateSessionStatus(id, status);
@@ -174,6 +217,9 @@ export function DashboardPage() {
     return 'Good evening';
   };
 
+  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const selectedLearner = kids.find((kid) => kid.id === resolvedChildId)?.name ?? (kids.length === 1 ? kids[0].name : 'your learner');
+
   const completedTopics = topics.filter((t) => t.completed).length;
   const avgProgress = subjects.length > 0
     ? Math.round(subjects.reduce((a, s) => a + s.progress, 0) / subjects.length)
@@ -212,16 +258,129 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* ── Greeting ──────────────────────────────────────────── */}
-      <div>
-        <p className="font-display text-2xl font-bold text-gray-900">{greeting()}, {user?.name ?? 'there'} 👋</p>
-        <p className="text-sm text-gray-400 mt-0.5">
-          {kids.length === 1 ? `Here's how ${kids[0].name} is doing.` : "Here's your homeschool at a glance."}
-        </p>
-      </div>
+    <div className="space-y-5 lg:space-y-8">
+      {/* ── Today Command Header ─────────────────────────────── */}
+      <section className="rounded-3xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-700">
+              <CalendarDays size={13} /> {todayLabel}
+            </div>
+            <h1 className="font-display text-2xl font-black leading-tight text-gray-900">{greeting()}, {user?.name ?? 'there'}</h1>
+            <p className="mt-1 text-sm text-gray-500">Today plan for {selectedLearner}.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <button
+              onClick={() => router.push('/planner')}
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-violet-700"
+            >
+              Week Plan <ArrowRight size={13} />
+            </button>
+            <button
+              onClick={() => router.push('/subjects')}
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-gray-50 px-3 text-xs font-bold text-gray-700 ring-1 ring-gray-100 transition-colors hover:bg-gray-100"
+            >
+              Curriculum <BookOpen size={13} />
+            </button>
+          </div>
+        </div>
 
-      {/* ── Summary Metrics Strip ────────────────────────────── */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <TodayMetric label="Scheduled" value={todaySessions.length} icon={CalendarDays} tone="bg-violet-50 text-violet-700" />
+          <TodayMetric label="Due" value={summary?.dueTodayCount ?? needsAttentionTasks.filter((t) => t.isDueToday).length} icon={Clock} tone="bg-blue-50 text-blue-700" />
+          <TodayMetric label="Overdue" value={summary?.overdueCount ?? needsAttentionTasks.filter((t) => t.isOverdue).length} icon={AlertCircle} tone="bg-rose-50 text-rose-700" />
+        </div>
+      </section>
+
+      {/* ── Today's Scheduled Learning ───────────────────────── */}
+      <section className="rounded-3xl border border-gray-100/80 bg-white p-4 shadow-card sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-bold text-gray-900">Scheduled Today</h2>
+            <p className="text-xs font-medium text-gray-400">Lessons and practice selected for today.</p>
+          </div>
+          <button onClick={() => router.push('/planner')} className="text-xs font-bold text-accent-pink hover:opacity-80">
+            Week Plan
+          </button>
+        </div>
+        {sessionsLoading ? (
+          <div className="space-y-2">
+            {[...Array(2)].map((_, i) => <div key={i} className="h-36 rounded-2xl bg-gray-100 animate-pulse" />)}
+          </div>
+        ) : todaySessions.length > 0 ? (
+          <div className="space-y-2">
+            {todaySessions.map((s) => {
+              const task = s.task_id ? taskById.get(s.task_id) : undefined;
+              const topic = task ? topicById.get(task.topic_id) : undefined;
+              const subject = topic ? subjectById.get(topic.subject_id) : undefined;
+              const progress = task ? progressByTaskId.get(task.id) : undefined;
+              return (
+                <ScheduledTaskCard
+                  key={s.id}
+                  session={s}
+                  task={task}
+                  topic={topic}
+                  subject={subject}
+                  progress={progress}
+                  onComplete={(id) => handleSessionAction(id, 'completed')}
+                  onSkip={(id) => handleSessionAction(id, 'skipped')}
+                  onReset={(id) => handleSessionAction(id, 'planned')}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
+            <p className="text-sm font-bold text-gray-700">No lessons scheduled for today</p>
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-400">Create a weekly plan or choose curriculum tasks for this week.</p>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:inline-grid sm:grid-cols-2">
+              <button
+                onClick={handleGenerateWeekPlan}
+                disabled={generatingPlan}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 text-xs font-bold text-white disabled:opacity-60"
+              >
+                {generatingPlan ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={14} />}
+                Generate Week Plan
+              </button>
+              <button
+                onClick={() => router.push('/tasks')}
+                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-white px-4 text-xs font-bold text-gray-700 shadow-sm ring-1 ring-gray-100"
+              >
+                Choose Tasks
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Due and Overdue ─────────────────────────────────── */}
+      {needsAttentionTasks.length > 0 && (
+        <section className="rounded-3xl border border-gray-100/80 bg-white p-4 shadow-card sm:p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-accent-coral" />
+            <h2 className="font-display text-base font-bold text-gray-800">Needs Attention</h2>
+          </div>
+          <div className="space-y-2">
+            {needsAttentionTasks.map((task) => (
+              <div key={task.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 p-3">
+                <Clock size={16} className={task.isOverdue ? 'text-red-500 flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-gray-800">{task.name}</p>
+                  <p className="text-xs text-gray-400">{task.isOverdue ? 'Overdue' : 'Due today'}</p>
+                </div>
+                <button
+                  onClick={() => handleMarkPracticed(task)}
+                  className="min-h-9 flex-shrink-0 rounded-xl bg-accent-pink/10 px-3 text-xs font-bold text-accent-pink transition-colors hover:bg-accent-pink/20"
+                >
+                  Practiced
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Daily Snapshot ──────────────────────────────────── */}
       {summaryLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {[...Array(6)].map((_, i) => (
@@ -231,58 +390,6 @@ export function DashboardPage() {
       ) : summary ? (
         <DashboardSummaryWidgets summary={summary} />
       ) : null}
-
-      {/* ── Needs Attention Today ────────────────────────────── */}
-      {!sessionsLoading && (todaySessions.length > 0 || needsAttentionTasks.length > 0) && (
-        <div className="bg-white rounded-2xl shadow-card border border-gray-100/80 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertCircle size={18} className="text-accent-coral" />
-            <h2 className="font-display text-base font-bold text-gray-800">Needs Attention Today</h2>
-          </div>
-          <div className="space-y-2">
-            {todaySessions.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                <Calendar size={16} className="text-accent-pink flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{s.label}</p>
-                  <p className="text-xs text-gray-400">Scheduled for today</p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => handleSessionAction(s.id, 'completed')}
-                    title="Mark completed"
-                    className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors"
-                  >
-                    <Check size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleSessionAction(s.id, 'skipped')}
-                    title="Skip"
-                    className="p-2 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors"
-                  >
-                    <SkipForward size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {needsAttentionTasks.map((task) => (
-              <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                <Clock size={16} className={task.isOverdue ? 'text-red-500 flex-shrink-0' : 'text-amber-500 flex-shrink-0'} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{task.name}</p>
-                  <p className="text-xs text-gray-400">{task.isOverdue ? 'Overdue' : 'Due today'}</p>
-                </div>
-                <button
-                  onClick={() => handleMarkPracticed(task)}
-                  className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent-pink/10 text-accent-pink hover:bg-accent-pink/20 transition-colors"
-                >
-                  Mark practiced
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Stats Grid ─────────────────────────────────────────── */}
       <StaggerContainer className={`grid grid-cols-2 ${isAdmin && kids.length > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
