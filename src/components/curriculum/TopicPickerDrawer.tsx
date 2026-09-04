@@ -11,7 +11,8 @@ import {
   fetchSubjectById,
 } from '../../services/curriculumService';
 import { supabase } from '../../services/supabase';
-import type { DbTopic } from '../../types/database';
+import { getTopicPlacementLabel, isTopicAppropriateForChild } from '../../lib/curriculumPlacement';
+import type { DbChild, DbTopic } from '../../types/database';
 
 interface Props {
   subjectId: string;
@@ -29,6 +30,7 @@ export function TopicPickerDrawer({ subjectId, childId, onClose, onEnrolled }: P
   const toast = useToast();
   const [subjectName, setSubjectName] = useState('');
   const [topics, setTopics] = useState<TopicWithState[]>([]);
+  const [child, setChild] = useState<DbChild | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,11 +44,14 @@ export function TopicPickerDrawer({ subjectId, childId, onClose, onEnrolled }: P
     try {
       setLoading(true);
 
-      // Load subject name and all topics
-      const [subject, allTopics] = await Promise.all([
+      // Load subject, all topics, and the selected child so library picks stay age/class appropriate.
+      const [subject, allTopics, childResult] = await Promise.all([
         fetchSubjectById(subjectId),
         fetchTopics(subjectId),
+        supabase.from('children').select('*').eq('id', childId).single(),
       ]);
+      const currentChild = (childResult.data ?? null) as DbChild | null;
+      setChild(currentChild);
       setSubjectName(subject?.name ?? 'Subject');
 
       // Check which topics the child is already enrolled in
@@ -59,7 +64,7 @@ export function TopicPickerDrawer({ subjectId, childId, onClose, onEnrolled }: P
       const enrolledIds = new Set((enrolled ?? []).map((e: any) => e.topic_id));
 
       // Filter out topics that are already assigned to the child
-      const unassignedTopics = allTopics.filter(t => !enrolledIds.has(t.id));
+      const unassignedTopics = allTopics.filter(t => !enrolledIds.has(t.id) && isTopicAppropriateForChild(t, currentChild).matches);
 
       setTopics(unassignedTopics.map(t => ({
         ...t,
@@ -176,6 +181,9 @@ export function TopicPickerDrawer({ subjectId, childId, onClose, onEnrolled }: P
                         {topic.difficulty_level}
                       </span>
                     )}
+                    <span title={isTopicAppropriateForChild(topic, child).reason} className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700">
+                      {getTopicPlacementLabel(topic)}
+                    </span>
                   </div>
                   {topic.description && (
                     <p className="text-xs text-gray-500 line-clamp-2">{topic.description}</p>

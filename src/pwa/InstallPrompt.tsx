@@ -66,26 +66,26 @@ export function InstallBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-2rem)] max-w-sm"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] left-3 right-3 z-[110] sm:left-1/2 sm:right-auto sm:w-[min(calc(100%-2rem),22rem)] sm:-translate-x-1/2 lg:bottom-6"
         >
-          <div className="flex items-center gap-3 bg-nav-from text-white rounded-2xl shadow-xl px-4 py-3.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-2 rounded-xl bg-nav-from px-3 py-2.5 text-white shadow-xl">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/15">
               <Download size={16} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold leading-tight">Install UnBoxed Learning</p>
-              <p className="text-xs text-white/70 mt-0.5">Add it to your home screen for quick, offline-ready access.</p>
+              <p className="truncate text-sm font-bold leading-tight">Install app</p>
+              <p className="truncate text-xs text-white/70">Save for quick offline access.</p>
             </div>
             <button
               onClick={handleInstall}
-              className="flex-shrink-0 text-xs font-semibold bg-white text-nav-from rounded-lg px-3 py-2 hover:bg-white/90 transition-colors"
+              className="min-h-9 flex-shrink-0 rounded-lg bg-white px-3 text-xs font-semibold text-nav-from transition-colors hover:bg-white/90"
             >
               Install
             </button>
             <button
               onClick={dismissBanner}
               aria-label="Dismiss install prompt"
-              className="flex-shrink-0 p-1 text-white/50 hover:text-white transition-colors"
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X size={14} />
             </button>

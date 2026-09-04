@@ -51,8 +51,7 @@ const ADMIN_NAV: NavItem[] = [
     label: 'Planning',
     icon: CalendarCheck,
     subItems: [
-      { label: 'Planner', path: '/planner', icon: CalendarClock },
-      { label: 'Scheduled', path: '/scheduled', icon: CalendarClock },
+      { label: 'Week Plan', path: '/planner', icon: CalendarClock },
       { label: 'Reports', path: '/reports', icon: BarChart3 },
       { label: 'Archived', path: '/archived', icon: Archive },
     ]

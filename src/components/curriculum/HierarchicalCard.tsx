@@ -69,7 +69,7 @@ export function HierarchicalCard({
           )}
           <div className="min-w-0 pt-0.5">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">
+              <h3 className="font-bold text-gray-900 text-xs leading-tight line-clamp-2">
                 {title}
               </h3>
               {badge}
@@ -167,16 +167,16 @@ export function HierarchicalCard({
 
       {/* ── Footer Stats ──────────────────────────────────── */}
       {footerItems && footerItems.length > 0 && (
-        <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-50 flex flex-wrap items-center gap-4">
+        <div className="px-3 py-3 bg-gray-50/50 border-t border-gray-50 flex flex-wrap items-center gap-2.5">
           {footerItems.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-1.5 min-w-0">
-              {item.icon && <div className="text-gray-300">{item.icon}</div>}
+            <div key={idx} className="flex items-center gap-1 min-w-0">
+              {item.icon && <div className="text-gray-300 scale-90">{item.icon}</div>}
               <div className="min-w-0">
-                <span className="text-[10px] text-gray-400 block leading-none uppercase font-bold tracking-tighter">
+                <span className="text-[9px] text-gray-400 block leading-none uppercase font-bold tracking-tighter">
                   {item.label}
                 </span>
                 {typeof item.value === 'string' || typeof item.value === 'number' ? (
-                  <span className="text-[11px] font-black text-gray-700 truncate block">
+                  <span className="text-[10px] font-black text-gray-700 truncate block">
                     {item.value}
                   </span>
                 ) : (

@@ -1,4 +1,4 @@
-import { Calendar, Clock, Repeat, TrendingUp, ChevronDown, ChevronUp, BookOpen, PenTool, Beaker, FileText, CheckSquare, MessageSquare, PlayCircle, Target, Info } from 'lucide-react';
+import { BookOpen, Calendar, CheckSquare, ChevronDown, ChevronUp, Clock, FileText, Info, MessageSquare, PlayCircle, Repeat, Target, Trash2, TrendingUp, Beaker, PenTool } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { InterestLevel, LearningStage, TaskWithProgress } from '../../types/taskTypes';
 import { InterestLevelIndicator } from './InterestLevelIndicator';
@@ -14,6 +14,7 @@ interface TaskCardProps {
   onUpdateInterest: (task: TaskWithProgress, level: InterestLevel) => void;
   onArchive: (taskId: string) => void;
   onUnarchive?: (taskId: string) => void;
+  onDelete?: () => void;
   onOpenDetails: (task: TaskWithProgress) => void;
   onToggleSchedule?: (task: TaskWithProgress) => void;
   subjectName?: string;
@@ -70,6 +71,7 @@ export function TaskCard({
   onUpdateInterest,
   onArchive,
   onUnarchive,
+  onDelete,
   onOpenDetails,
   onToggleSchedule,
   subjectName,
@@ -102,11 +104,31 @@ export function TaskCard({
             <h3 className="font-bold text-gray-900 text-base leading-tight flex-1 line-clamp-2">
               {task.name}
             </h3>
-            {task.is_assessment && (
-              <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md border border-rose-200">
-                Assessment
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {task.is_assessment && (
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md border border-rose-200">
+                  Assessment
+                </span>
+              )}
+              <button
+                onClick={() => onToggleSchedule?.(task)}
+                disabled={progress?.learning_stage === 'Not_Started'}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border shadow-sm disabled:opacity-50 ${isScheduled ? 'bg-violet-600 text-white border-violet-700 hover:bg-violet-700' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-violet-600'}`}
+                title={isScheduled ? "Unschedule" : "Schedule for this week"}
+              >
+                <Calendar size={12} />
+                This Week
+              </button>
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 border border-transparent hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors"
+                  title="Delete Task"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Row 2: Type, Time, Subject/Topic */}
@@ -139,11 +161,6 @@ export function TaskCard({
             <LearningStageBadge stage={progress?.learning_stage ?? 'Introduced'} size="sm" />
             <InterestLevelIndicator level={(progress?.interest_level ?? 3) as InterestLevel} interactive onSelect={(l) => onUpdateInterest(task, l)} size="sm" />
             <SmartIndicators task={task} />
-            {isScheduled && (
-              <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-2 py-1 rounded-md border border-violet-200 ml-auto">
-                📅 Scheduled
-              </span>
-            )}
           </div>
         </div>
       </div>
